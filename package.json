@@ -9,6 +9,7 @@
   },
   "scripts": {
     "start": "node app.js",
+    "start:logging": "node app-with-logging.js",
     "start:webhook": "node webhook-bot.js",
     "start:cpanel": "node app.js",
     "dev": "node dev-bot.js",
@@ -21,6 +22,8 @@
     "clear-webhook": "node clear-webhook.js",
     "test-config": "node test-config.js",
     "deploy-cpanel": "node deploy-cpanel.js",
+    "diagnostics": "node run-diagnostics.js",
+    "cpanel-check": "node cpanel-diagnostics.js",
     "test": "echo \"No tests specified yet\" && exit 0",
     "lint": "echo \"No linting configured yet\" && exit 0",
     "postinstall": "echo \"✅ Dependencies installed successfully for cPanel\""
