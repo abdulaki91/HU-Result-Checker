@@ -41,33 +41,45 @@ const config = {
   IS_CPANEL: process.env.NODE_ENV === "production" || process.env.CPANEL_DOMAIN,
   NODE_ENV: process.env.NODE_ENV || "development",
 
-  // Auto-generate URLs if not provided
+  // Auto-generate URLs for your cPanel setup: repositories/telegram-student-results-bot
   get FULL_WEBHOOK_URL() {
     if (this.WEBHOOK_URL) return this.WEBHOOK_URL;
-    if (this.BOT_BASE_URL) return `${this.BOT_BASE_URL}${this.WEBHOOK_PATH}`;
+    if (this.BOT_BASE_URL && this.BOT_PATH)
+      return `${this.BOT_BASE_URL}${this.BOT_PATH}${this.WEBHOOK_PATH}`;
     if (this.CPANEL_DOMAIN)
       return `${this.PROTOCOL}://${this.CPANEL_DOMAIN}${this.BOT_PATH}${this.WEBHOOK_PATH}`;
     return "";
   },
 
   get FULL_STATUS_URL() {
-    if (this.BOT_BASE_URL) return `${this.BOT_BASE_URL}${this.STATUS_ENDPOINT}`;
+    if (this.BOT_BASE_URL && this.BOT_PATH)
+      return `${this.BOT_BASE_URL}${this.BOT_PATH}${this.STATUS_ENDPOINT}`;
     if (this.CPANEL_DOMAIN)
       return `${this.PROTOCOL}://${this.CPANEL_DOMAIN}${this.BOT_PATH}${this.STATUS_ENDPOINT}`;
     return "";
   },
 
   get FULL_HEALTH_URL() {
-    if (this.BOT_BASE_URL) return `${this.BOT_BASE_URL}${this.HEALTH_ENDPOINT}`;
+    if (this.BOT_BASE_URL && this.BOT_PATH)
+      return `${this.BOT_BASE_URL}${this.BOT_PATH}${this.HEALTH_ENDPOINT}`;
     if (this.CPANEL_DOMAIN)
       return `${this.PROTOCOL}://${this.CPANEL_DOMAIN}${this.BOT_PATH}${this.HEALTH_ENDPOINT}`;
     return "";
   },
 
   get FULL_BASE_URL() {
-    if (this.BOT_BASE_URL) return this.BOT_BASE_URL;
+    if (this.BOT_BASE_URL && this.BOT_PATH)
+      return `${this.BOT_BASE_URL}${this.BOT_PATH}`;
     if (this.CPANEL_DOMAIN)
       return `${this.PROTOCOL}://${this.CPANEL_DOMAIN}${this.BOT_PATH}`;
+    return "";
+  },
+
+  get FULL_LOGS_URL() {
+    if (this.BOT_BASE_URL && this.BOT_PATH)
+      return `${this.BOT_BASE_URL}${this.BOT_PATH}/logs`;
+    if (this.CPANEL_DOMAIN)
+      return `${this.PROTOCOL}://${this.CPANEL_DOMAIN}${this.BOT_PATH}/logs`;
     return "";
   },
 };
@@ -92,11 +104,14 @@ if (config.IS_CPANEL && !config.CPANEL_DOMAIN && !config.BOT_BASE_URL) {
 
 // Log configuration in development
 if (config.NODE_ENV !== "production") {
-  console.log("🔧 Bot Configuration:");
+  console.log("🔧 Bot Configuration for cPanel:");
+  console.log(`   Domain: ${config.CPANEL_DOMAIN}`);
+  console.log(`   Path: ${config.BOT_PATH}`);
   console.log(`   Base URL: ${config.FULL_BASE_URL}`);
   console.log(`   Webhook URL: ${config.FULL_WEBHOOK_URL}`);
   console.log(`   Status URL: ${config.FULL_STATUS_URL}`);
   console.log(`   Health URL: ${config.FULL_HEALTH_URL}`);
+  console.log(`   Logs URL: ${config.FULL_LOGS_URL}`);
 }
 
 module.exports = config;
