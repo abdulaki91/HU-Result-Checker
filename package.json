@@ -1,0 +1,67 @@
+{
+  "name": "telegram-student-results-bot",
+  "version": "1.0.0",
+  "description": "Telegram bot for managing and checking student results - cPanel optimized",
+  "main": "app.js",
+  "engines": {
+    "node": ">=14.0.0",
+    "npm": ">=6.0.0"
+  },
+  "scripts": {
+    "start": "node app.js",
+    "start:webhook": "node webhook-bot.js",
+    "start:cpanel": "node app.js",
+    "dev": "node dev-bot.js",
+    "dev:polling": "node bot.js",
+    "dev:webhook": "nodemon webhook-bot.js",
+    "dev:cpanel": "nodemon app.js",
+    "setup-db": "node setup-database.js",
+    "setup-webhook": "node setup-webhook.js",
+    "setup-webhook-cpanel": "node setup-webhook-cpanel.js",
+    "clear-webhook": "node clear-webhook.js",
+    "test-config": "node test-config.js",
+    "deploy-cpanel": "node deploy-cpanel.js",
+    "test": "echo \"No tests specified yet\" && exit 0",
+    "lint": "echo \"No linting configured yet\" && exit 0",
+    "postinstall": "echo \"✅ Dependencies installed successfully for cPanel\""
+  },
+  "keywords": [
+    "telegram",
+    "bot",
+    "student",
+    "results",
+    "excel",
+    "cpanel",
+    "webhook",
+    "mysql"
+  ],
+  "author": "",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": ""
+  },
+  "dependencies": {
+    "node-telegram-bot-api": "^0.66.0",
+    "xlsx": "^0.18.5",
+    "mysql2": "^3.6.5",
+    "dotenv": "^16.3.1",
+    "axios": "^1.6.0",
+    "express": "^4.18.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "optionalDependencies": {},
+  "peerDependencies": {},
+  "bundledDependencies": [],
+  "os": [
+    "linux",
+    "darwin",
+    "win32"
+  ],
+  "cpu": [
+    "x64",
+    "arm64"
+  ]
+}
