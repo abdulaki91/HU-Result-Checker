@@ -11,7 +11,7 @@
     "start": "node app.js",
     "start:logging": "node app-with-logging.js",
     "start:webhook": "node webhook-bot.js",
-    "start:cpanel": "node app.js",
+    "start:polling-temp": "node bot-polling-temp.js",
     "dev": "node dev-bot.js",
     "dev:polling": "node bot.js",
     "dev:webhook": "nodemon webhook-bot.js",
