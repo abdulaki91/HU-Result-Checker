@@ -62,37 +62,49 @@ app.get(config.STATUS_ENDPOINT, (req, res) => {
 // Initialize bot
 let bot;
 
+// Register webhook routes IMMEDIATELY (before bot initialization)
+// This ensures webhook endpoint exists even if bot initialization fails
+app.post(config.WEBHOOK_PATH, (req, res) => {
+  try {
+    if (bot && bot.processUpdate) {
+      bot.processUpdate(req.body);
+      res.sendStatus(200);
+    } else {
+      console.log("⚠️ Webhook received but bot not ready yet");
+      res.sendStatus(503); // Service Unavailable
+    }
+  } catch (error) {
+    Logger.error("Webhook processing error:", error.message);
+    res.sendStatus(500);
+  }
+});
+
+// Alternative webhook path with token (more secure)
+app.post(`${config.WEBHOOK_PATH}/${config.BOT_TOKEN}`, (req, res) => {
+  try {
+    if (bot && bot.processUpdate) {
+      bot.processUpdate(req.body);
+      res.sendStatus(200);
+    } else {
+      console.log("⚠️ Webhook received but bot not ready yet");
+      res.sendStatus(503); // Service Unavailable
+    }
+  } catch (error) {
+    Logger.error("Webhook processing error:", error.message);
+    res.sendStatus(500);
+  }
+});
+
 async function initializeBot() {
   try {
     bot = new StudentResultsBot(true); // Webhook mode
     await bot.initialize();
 
-    // Webhook endpoint - using config
-    app.post(config.WEBHOOK_PATH, (req, res) => {
-      try {
-        bot.processUpdate(req.body);
-        res.sendStatus(200);
-      } catch (error) {
-        Logger.error("Webhook processing error:", error.message);
-        res.sendStatus(500);
-      }
-    });
-
-    // Alternative webhook path with token (more secure)
-    app.post(`${config.WEBHOOK_PATH}/${config.BOT_TOKEN}`, (req, res) => {
-      try {
-        bot.processUpdate(req.body);
-        res.sendStatus(200);
-      } catch (error) {
-        Logger.error("Webhook processing error:", error.message);
-        res.sendStatus(500);
-      }
-    });
-
     Logger.info("✅ Bot initialized in webhook mode for cPanel");
     Logger.info(`📍 Webhook URL: ${config.FULL_WEBHOOK_URL}`);
   } catch (error) {
     Logger.error("❌ Failed to initialize bot:", error.message);
+    // Don't exit - keep server running so webhook endpoint remains available
   }
 }
 
