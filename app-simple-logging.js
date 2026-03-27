@@ -61,13 +61,14 @@ app.get("/", (req, res) => {
     version: "1.0.0",
     environment: "cPanel Shared Hosting",
     urls: {
-      base: config.FULL_BASE_URL || `http://checkresultbot.abdiko.com`,
+      base: config.FULL_BASE_URL || `https://checkresultbot.abdulaki.com`,
       webhook:
-        config.FULL_WEBHOOK_URL || `http://checkresultbot.abdiko.com/webhook`,
+        config.FULL_WEBHOOK_URL ||
+        `https://checkresultbot.abdulaki.com/webhook`,
       status:
-        config.FULL_STATUS_URL || `http://checkresultbot.abdiko.com/status`,
+        config.FULL_STATUS_URL || `https://checkresultbot.abdulaki.com/status`,
       health:
-        config.FULL_HEALTH_URL || `http://checkresultbot.abdiko.com/health`,
+        config.FULL_HEALTH_URL || `https://checkresultbot.abdulaki.com/health`,
     },
   });
 });
@@ -94,9 +95,10 @@ app.get("/status", (req, res) => {
     timestamp: new Date().toISOString(),
     config: {
       domain: config.CPANEL_DOMAIN || process.env.CPANEL_DOMAIN,
-      baseUrl: config.FULL_BASE_URL || `http://checkresultbot.abdiko.com`,
+      baseUrl: config.FULL_BASE_URL || `https://checkresultbot.abdulaki.com`,
       webhookUrl:
-        config.FULL_WEBHOOK_URL || `http://checkresultbot.abdiko.com/webhook`,
+        config.FULL_WEBHOOK_URL ||
+        `https://checkresultbot.abdulaki.com/webhook`,
       useJsonStorage: config.USE_JSON_STORAGE || false,
       database: config.USE_JSON_STORAGE ? "JSON File" : "MySQL",
     },
@@ -217,11 +219,11 @@ app.use((req, res) => {
 const server = app.listen(PORT, async () => {
   const startupInfo = {
     port: PORT,
-    baseUrl: `http://checkresultbot.abdiko.com`,
-    webhookUrl: `http://checkresultbot.abdiko.com/webhook`,
-    statusUrl: `http://checkresultbot.abdiko.com/status`,
-    healthUrl: `http://checkresultbot.abdiko.com/health`,
-    logsUrl: `http://checkresultbot.abdiko.com/logs`,
+    baseUrl: `https://checkresultbot.abdulaki.com`,
+    webhookUrl: `https://checkresultbot.abdulaki.com/webhook`,
+    statusUrl: `https://checkresultbot.abdulaki.com/status`,
+    healthUrl: `https://checkresultbot.abdulaki.com/health`,
+    logsUrl: `https://checkresultbot.abdulaki.com/logs`,
   };
 
   console.log(`🚀 cPanel Bot Server running on port ${PORT}`);

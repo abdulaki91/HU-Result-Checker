@@ -1,10 +1,10 @@
-# 🚀 cPanel Setup Guide for checkresultbot.abdiko.com
+# 🚀 cPanel Setup Guide for checkresultbot.abdulaki.com
 
 ## **Your Specific Configuration**
 
-- **Domain**: `checkresultbot.abdiko.com`
+- **Domain**: `checkresultbot.abdulaki.com`
 - **cPanel Path**: `repositories/telegram-student-results-bot`
-- **Full URL**: `http://checkresultbot.abdiko.com/repositories/telegram-student-results-bot`
+- **Full URL**: `https://checkresultbot.abdulaki.com/repositories/telegram-student-results-bot`
 
 ## **Step 1: Upload Files to cPanel**
 
@@ -48,8 +48,8 @@ Node.js Version: Latest available (14+)
 ```
 BOT_TOKEN=8629682635:AAEj2q5-6v1vnKC2Yv2N_flGoE4ClCODtdA
 ADMIN_USER_ID=664249810
-BOT_BASE_URL=http://checkresultbot.abdiko.com
-CPANEL_DOMAIN=checkresultbot.abdiko.com
+BOT_BASE_URL=https://checkresultbot.abdulaki.com
+CPANEL_DOMAIN=checkresultbot.abdulaki.com
 BOT_PATH=/repositories/telegram-student-results-bot
 NODE_ENV=production
 DB_HOST=abdiko.com
@@ -113,17 +113,17 @@ node setup-webhook-cpanel.js
 ```
 
 This will configure Telegram webhook to:
-`http://checkresultbot.abdiko.com/repositories/telegram-student-results-bot/webhook`
+`https://checkresultbot.abdulaki.com/repositories/telegram-student-results-bot/webhook`
 
 ## **Step 8: Test Your Bot**
 
 ### **Your Bot URLs:**
 
-- **Home**: http://checkresultbot.abdiko.com/repositories/telegram-student-results-bot/
-- **Status**: http://checkresultbot.abdiko.com/repositories/telegram-student-results-bot/status
-- **Health**: http://checkresultbot.abdiko.com/repositories/telegram-student-results-bot/health
-- **Logs**: http://checkresultbot.abdiko.com/repositories/telegram-student-results-bot/logs
-- **Webhook**: http://checkresultbot.abdiko.com/repositories/telegram-student-results-bot/webhook
+- **Home**: https://checkresultbot.abdulaki.com/repositories/telegram-student-results-bot/
+- **Status**: https://checkresultbot.abdulaki.com/repositories/telegram-student-results-bot/status
+- **Health**: https://checkresultbot.abdulaki.com/repositories/telegram-student-results-bot/health
+- **Logs**: https://checkresultbot.abdulaki.com/repositories/telegram-student-results-bot/logs
+- **Webhook**: https://checkresultbot.abdulaki.com/repositories/telegram-student-results-bot/webhook
 
 ### **Test Steps:**
 
@@ -135,7 +135,7 @@ This will configure Telegram webhook to:
 
 ### **Method 1: Via Browser**
 
-Visit: `http://checkresultbot.abdiko.com/repositories/telegram-student-results-bot/logs`
+Visit: `https://checkresultbot.abdulaki.com/repositories/telegram-student-results-bot/logs`
 
 ### **Method 2: cPanel File Manager**
 
@@ -225,9 +225,9 @@ node view-errors.js --errors-only
 
 ## **Support URLs for Your Bot**
 
-- **Main Bot**: http://checkresultbot.abdiko.com/repositories/telegram-student-results-bot/
-- **Status Check**: http://checkresultbot.abdiko.com/repositories/telegram-student-results-bot/status
-- **Health Check**: http://checkresultbot.abdiko.com/repositories/telegram-student-results-bot/health
-- **Error Logs**: http://checkresultbot.abdiko.com/repositories/telegram-student-results-bot/logs
+- **Main Bot**: https://checkresultbot.abdulaki.com/repositories/telegram-student-results-bot/
+- **Status Check**: https://checkresultbot.abdulaki.com/repositories/telegram-student-results-bot/status
+- **Health Check**: https://checkresultbot.abdulaki.com/repositories/telegram-student-results-bot/health
+- **Error Logs**: https://checkresultbot.abdulaki.com/repositories/telegram-student-results-bot/logs
 
 Your bot should now be fully operational on cPanel! 🎉

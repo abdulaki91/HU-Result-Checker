@@ -68,12 +68,12 @@ function handleHome(req, res) {
       USER: process.env.USER || "not set",
     },
     urls: {
-      home: `http://checkresultbot.abdiko.com${BASE_PATH}`,
-      test: `http://checkresultbot.abdiko.com${BASE_PATH}/test`,
-      env: `http://checkresultbot.abdiko.com${BASE_PATH}/env`,
-      files: `http://checkresultbot.abdiko.com${BASE_PATH}/files`,
-      database: `http://checkresultbot.abdiko.com${BASE_PATH}/database`,
-      logs: `http://checkresultbot.abdiko.com${BASE_PATH}/logs`,
+      home: `https://checkresultbot.abdulaki.com${BASE_PATH}`,
+      test: `https://checkresultbot.abdulaki.com${BASE_PATH}/test`,
+      env: `https://checkresultbot.abdulaki.com${BASE_PATH}/env`,
+      files: `https://checkresultbot.abdulaki.com${BASE_PATH}/files`,
+      database: `https://checkresultbot.abdulaki.com${BASE_PATH}/database`,
+      logs: `https://checkresultbot.abdulaki.com${BASE_PATH}/logs`,
     },
     instructions: [
       "✅ Node.js is working on cPanel!",
@@ -487,10 +487,12 @@ server.listen(PORT, () => {
   console.log(`Process ID: ${process.pid}`);
   console.log("");
   console.log("🌐 Test URLs:");
-  console.log(`Home: http://checkresultbot.abdiko.com${BASE_PATH}`);
-  console.log(`Test: http://checkresultbot.abdiko.com${BASE_PATH}/test`);
-  console.log(`Environment: http://checkresultbot.abdiko.com${BASE_PATH}/env`);
-  console.log(`Files: http://checkresultbot.abdiko.com${BASE_PATH}/files`);
+  console.log(`Home: https://checkresultbot.abdulaki.com${BASE_PATH}`);
+  console.log(`Test: https://checkresultbot.abdulaki.com${BASE_PATH}/test`);
+  console.log(
+    `Environment: https://checkresultbot.abdulaki.com${BASE_PATH}/env`,
+  );
+  console.log(`Files: https://checkresultbot.abdulaki.com${BASE_PATH}/files`);
   console.log(
     `Database: http://checkresultbot.abdiko.com${BASE_PATH}/database`,
   );

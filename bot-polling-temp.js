@@ -41,7 +41,7 @@ async function startPollingBot() {
     console.log(`   Mode: Polling (No HTTPS required)`);
 
     console.log("\n🔒 SSL Setup Reminder:");
-    console.log("   1. Get SSL certificate for checkresultbot.abdiko.com");
+    console.log("   1. Get SSL certificate for checkresultbot.abdulaki.com");
     console.log("   2. Update .env to use https://");
     console.log("   3. Switch to webhook mode: node app.js");
     console.log("   4. Setup webhook: node setup-webhook-cpanel.js");

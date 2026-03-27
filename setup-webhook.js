@@ -5,9 +5,10 @@ async function setupWebhook() {
   const bot = new TelegramBot(config.BOT_TOKEN);
 
   // Replace with your actual hosted URL
-  const WEBHOOK_URL = process.env.WEBHOOK_URL || "YOUR_HOSTED_URL_HERE";
+  const WEBHOOK_URL =
+    process.env.WEBHOOK_URL || "https://checkresultbot.abdiko.com";
 
-  if (WEBHOOK_URL === "YOUR_HOSTED_URL_HERE") {
+  if (WEBHOOK_URL === "https://checkresultbot.abdiko.com") {
     console.log(
       "❌ Please set your WEBHOOK_URL environment variable or update this script",
     );
