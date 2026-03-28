@@ -1,5 +1,6 @@
 const mysql = require("mysql2/promise");
 const fs = require("fs").promises;
+const fsSync = require("fs");
 const path = require("path");
 const config = require("./config");
 
@@ -33,6 +34,7 @@ class Database {
       // Create table if it doesn't exist
       await this.createStudentsTable();
       await this.createCourseSettingsTable();
+      await this.createFeedbackTable();
     } catch (error) {
       console.error("❌ MySQL connection failed:", error.message);
 
@@ -720,6 +722,141 @@ class Database {
     if (!config.USE_JSON_STORAGE && this.connection) {
       await this.connection.end();
       console.log("📴 MySQL connection closed");
+    }
+  }
+
+  // Feedback methods
+  async createFeedbackTable() {
+    if (config.USE_JSON_STORAGE) {
+      // For JSON storage, feedback will be stored in a separate file
+      return;
+    }
+
+    const createTableQuery = `
+      CREATE TABLE IF NOT EXISTS feedback (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id BIGINT NOT NULL,
+        student_id VARCHAR(20) NULL,
+        user_name VARCHAR(255) NOT NULL,
+        user_username VARCHAR(255) NULL,
+        message TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_user_id (user_id),
+        INDEX idx_created_at (created_at)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `;
+
+    await this.connection.execute(createTableQuery);
+    console.log("✅ Feedback table created/verified");
+  }
+
+  async saveFeedback(feedbackData) {
+    if (config.USE_JSON_STORAGE) {
+      return await this.saveFeedbackJson(feedbackData);
+    } else {
+      return await this.saveFeedbackMySQL(feedbackData);
+    }
+  }
+
+  async saveFeedbackJson(feedbackData) {
+    try {
+      // Load existing feedback
+      let feedbackList = [];
+      const feedbackPath = path.join(__dirname, "data/feedback.json");
+
+      if (fsSync.existsSync(feedbackPath)) {
+        const feedbackContent = fsSync.readFileSync(feedbackPath, "utf8");
+        feedbackList = JSON.parse(feedbackContent);
+      }
+
+      // Add new feedback with ID
+      const newFeedback = {
+        id: feedbackList.length + 1,
+        ...feedbackData,
+        created_at: feedbackData.created_at.toISOString(),
+      };
+
+      feedbackList.push(newFeedback);
+
+      // Save back to file
+      fsSync.writeFileSync(feedbackPath, JSON.stringify(feedbackList, null, 2));
+      console.log("✅ Feedback saved to JSON file");
+
+      return newFeedback;
+    } catch (error) {
+      console.error("❌ Error saving feedback to JSON:", error.message);
+      throw error;
+    }
+  }
+
+  async saveFeedbackMySQL(feedbackData) {
+    try {
+      const insertQuery = `
+        INSERT INTO feedback (user_id, student_id, user_name, user_username, message, created_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `;
+
+      const [result] = await this.connection.execute(insertQuery, [
+        feedbackData.user_id,
+        feedbackData.student_id,
+        feedbackData.user_name,
+        feedbackData.user_username,
+        feedbackData.message,
+        feedbackData.created_at,
+      ]);
+
+      console.log("✅ Feedback saved to MySQL");
+      return { id: result.insertId, ...feedbackData };
+    } catch (error) {
+      console.error("❌ Error saving feedback to MySQL:", error.message);
+      throw error;
+    }
+  }
+
+  async getRecentFeedback(limit = 10) {
+    if (config.USE_JSON_STORAGE) {
+      return await this.getRecentFeedbackJson(limit);
+    } else {
+      return await this.getRecentFeedbackMySQL(limit);
+    }
+  }
+
+  async getRecentFeedbackJson(limit = 10) {
+    try {
+      const feedbackPath = path.join(__dirname, "data/feedback.json");
+
+      if (!fsSync.existsSync(feedbackPath)) {
+        return [];
+      }
+
+      const feedbackContent = fsSync.readFileSync(feedbackPath, "utf8");
+      const feedbackList = JSON.parse(feedbackContent);
+
+      // Sort by created_at descending and limit
+      return feedbackList
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+        .slice(0, limit);
+    } catch (error) {
+      console.error("❌ Error reading feedback from JSON:", error.message);
+      return [];
+    }
+  }
+
+  async getRecentFeedbackMySQL(limit = 10) {
+    try {
+      const selectQuery = `
+        SELECT * FROM feedback 
+        ORDER BY created_at DESC 
+        LIMIT ?
+      `;
+
+      const [rows] = await this.connection.execute(selectQuery, [limit]);
+      console.log(`📊 Retrieved ${rows.length} feedback entries from MySQL`);
+
+      return rows;
+    } catch (error) {
+      console.error("❌ Error reading feedback from MySQL:", error.message);
+      return [];
     }
   }
 }
