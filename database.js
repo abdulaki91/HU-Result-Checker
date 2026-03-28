@@ -256,28 +256,43 @@ class Database {
     try {
       const searchId = studentId.toString().trim();
 
+      // Import validators to check format
+      const Validators = require("./src/utils/validators");
+
+      // Only proceed if the ID is in the correct format
+      if (!Validators.isValidStudentIdForSearch(searchId)) {
+        return null;
+      }
+
       if (config.USE_JSON_STORAGE) {
         // Try exact match first
         let student = this.students.find(
-          (student) =>
-            student.studentId.toString().toLowerCase() ===
-            searchId.toLowerCase(),
+          (student) => student.studentId.toString().trim() === searchId,
         );
 
-        // If no exact match, try flexible matching
+        // If no exact match, try flexible matching against stored IDs
         if (!student) {
           student = this.students.find((student) => {
-            const fullId = student.studentId.toString().toLowerCase();
-            const inputId = searchId.toLowerCase();
+            const storedId = student.studentId.toString().trim();
 
-            // Check if the full ID ends with the input ID
-            // Example: GPR0015/15 matches 0015/15
-            return (
-              fullId.endsWith(inputId) ||
-              fullId.includes(inputId) ||
-              // Remove common prefixes and check
-              this.matchesWithoutPrefix(fullId, inputId)
-            );
+            // Check if stored ID ends with the search pattern
+            // Example: GPR0014/14 matches search 0014/14
+            if (storedId.endsWith(searchId)) {
+              return true;
+            }
+
+            // Check if stored ID contains the search pattern after removing common prefixes
+            const prefixes = ["GPR", "STU", "REG", "STD", "ST", "ID"];
+            for (const prefix of prefixes) {
+              if (storedId.toUpperCase().startsWith(prefix)) {
+                const withoutPrefix = storedId.substring(prefix.length);
+                if (withoutPrefix === searchId) {
+                  return true;
+                }
+              }
+            }
+
+            return false;
           });
         }
 
@@ -291,7 +306,7 @@ class Database {
       } else {
         // Try exact match first
         let [rows] = await this.connection.execute(
-          "SELECT * FROM students WHERE LOWER(student_id) = LOWER(?)",
+          "SELECT * FROM students WHERE student_id = ?",
           [searchId],
         );
 
@@ -299,10 +314,28 @@ class Database {
         if (rows.length === 0) {
           [rows] = await this.connection.execute(
             `SELECT * FROM students WHERE 
-             LOWER(student_id) LIKE LOWER(?) OR 
-             LOWER(student_id) LIKE LOWER(?) OR
-             LOWER(RIGHT(student_id, LENGTH(?))) = LOWER(?)`,
-            [`%${searchId}`, `%${searchId}%`, searchId, searchId],
+             student_id LIKE ? OR 
+             (student_id LIKE 'GPR%' AND RIGHT(student_id, ?) = ?) OR
+             (student_id LIKE 'STU%' AND RIGHT(student_id, ?) = ?) OR
+             (student_id LIKE 'REG%' AND RIGHT(student_id, ?) = ?) OR
+             (student_id LIKE 'STD%' AND RIGHT(student_id, ?) = ?) OR
+             (student_id LIKE 'ST%' AND RIGHT(student_id, ?) = ?) OR
+             (student_id LIKE 'ID%' AND RIGHT(student_id, ?) = ?)`,
+            [
+              `%${searchId}`,
+              searchId.length,
+              searchId,
+              searchId.length,
+              searchId,
+              searchId.length,
+              searchId,
+              searchId.length,
+              searchId,
+              searchId.length,
+              searchId,
+              searchId.length,
+              searchId,
+            ],
           );
         }
 
@@ -330,22 +363,6 @@ class Database {
       console.error("❌ Failed to find student:", error.message);
       throw error;
     }
-  }
-
-  matchesWithoutPrefix(fullId, inputId) {
-    // Remove common prefixes like GPR, STU, REG, etc.
-    const prefixes = ["gpr", "stu", "reg", "std", "st", "id"];
-
-    for (const prefix of prefixes) {
-      if (fullId.startsWith(prefix)) {
-        const withoutPrefix = fullId.substring(prefix.length);
-        if (withoutPrefix === inputId || withoutPrefix.endsWith(inputId)) {
-          return true;
-        }
-      }
-    }
-
-    return false;
   }
 
   async getStudentCount() {

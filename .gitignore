@@ -11,6 +11,9 @@ yarn-error.log*
 .env.test.local
 .env.production.local
 
+# Development environment files
+.env.dev
+
 # Temporary files
 temp/
 *.tmp
@@ -45,3 +48,45 @@ pids/
 *.pid
 *.seed
 *.pid.lock
+
+# ===========================================
+# DEVELOPMENT & TESTING FILES
+# (Should not be uploaded to production server)
+# ===========================================
+
+# Development bot and testing scripts
+dev-bot.js
+create-test-data.js
+test-validation.js
+test-database.js
+test-webhook.js
+quick-fix-test.js
+test-bot-setup.js
+
+# Development guides and documentation
+DEVELOPMENT_TESTING_GUIDE.md
+PRODUCTION_DEPLOYMENT_GUIDE.md
+DEPLOYMENT_CHECKLIST_SIMPLE.md
+STUDENT_ID_UPDATE_SUMMARY.md
+
+# Deployment helpers
+deploy-to-production.js
+check-production-files.js
+
+# Test data files
+data/students.json
+
+# Diagnostic and temporary files
+diagnostic-report.json
+error-summary.json
+check-result.zip
+
+# Legacy/backup files
+bot-polling-temp.js
+app-simple-logging.js
+app-with-logging.js
+cpanel-diagnostics.js
+debug-project.js
+deploy-cpanel.js
+create-logs.js
+clear-webhook.js

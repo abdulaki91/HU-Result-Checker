@@ -11,7 +11,41 @@ class MessageHandler {
 
     if (!text) return;
 
-    // Assume any text message is a student ID lookup
+    // Import validators
+    const Validators = require("../utils/validators");
+
+    // Validate student ID format before searching
+    if (!Validators.isValidStudentIdForSearch(text)) {
+      const formatErrorMessage = `❌ *Invalid Student ID Format*
+
+🆔 You entered: \`${text}\`
+
+✅ *Required Format:* \`XXXX/XX\`
+
+📝 *Examples:*
+• \`0014/14\`
+• \`0025/15\`
+• \`0123/20\`
+
+⚠️ *Please enter your complete Student ID including the slash (/) and year digits.*
+
+Try again with the correct format.`;
+
+      const keyboard = {
+        inline_keyboard: [
+          [{ text: "🔍 Try Again", callback_data: "check_result" }],
+          [{ text: "🏠 Main Menu", callback_data: "back_to_menu" }],
+        ],
+      };
+
+      await this.bot.sendMessage(chatId, formatErrorMessage, {
+        parse_mode: "Markdown",
+        reply_markup: keyboard,
+      });
+      return;
+    }
+
+    // If format is valid, proceed with search
     await this.searchStudentResult(chatId, text);
   }
 
@@ -30,15 +64,14 @@ class MessageHandler {
 
 🆔 Searched for: \`${studentId}\`
 
-💡 *Try these formats:*
-• Full ID: GPR0015/15, STU001, REG123
-• Short ID: 0015/15, 001, 123
-• Check spelling and format
-
 💡 *Please check:*
-• Your Student ID is correct
+• Your Student ID is correct (format: XXXX/XX)
 • Results have been uploaded by admin
-• Try different ID format if applicable
+• Make sure you're using the exact format: 0014/14
+
+📝 *Required Format:* \`XXXX/XX\`
+• Example: \`0014/14\`
+• Example: \`0025/15\`
 
 Need help? Contact your instructor.`;
 

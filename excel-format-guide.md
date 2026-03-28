@@ -37,7 +37,7 @@ Your Excel should look like this:
 ```
 Row 1: STUDENT NAME | STUDENT ID | QUIZ(5%) | MID(30%) | ASSIGNMENT(15%) | FINAL(50%) | TOTAL | GRADE
 Row 2: John Doe     | ST001      | 85       | 78       | 92              | 88         | 343   | A
-Row 3: Jane Smith   | ST002      | 90       | 82       | 88              | 91         | 351   | A
+Row 3: Jane Smith   | GPR0025/15 | 90       | 82       | 88              | 91         | 351   | A
 ```
 
 ## Supported Column Names
@@ -57,6 +57,8 @@ The bot supports these variations (case doesn't matter):
 - `ID` ✅
 - `STUDENT NO` ✅
 - `REG NO` ✅
+
+**📝 Note: Excel import accepts any Student ID format (ST001, GPR0014/14, 0014/14, etc.)**
 
 ### Quiz:
 
@@ -119,8 +121,39 @@ HU-ISIMS-RIS - INDEX
 ```
 STUDENT NAME | STUDENT ID | QUIZ(5%) | MID(30%) | ASSIGNMENT(15%) | FINAL(50%) | TOTAL | GRADE
 John Doe     | ST001      | 85       | 78       | 92              | 88         | 343   | A
-Jane Smith   | ST002      | 90       | 82       | 88              | 91         | 351   | A
+Jane Smith   | GPR0025/15 | 90       | 82       | 88              | 91         | 351   | A
 ```
+
+## Student ID Requirements
+
+### For Excel Import (Flexible):
+
+**✅ Excel import accepts ANY Student ID format:**
+
+- `ST001` ✅
+- `GPR0014/14` ✅
+- `0014/14` ✅
+- `REG123` ✅
+- `1234` ✅
+
+### For Student Search (Strict):
+
+**⚠️ Students must enter IDs in format XXXX/XX when searching:**
+
+#### Valid Search Examples:
+
+- `0014/14` ✅
+- `0025/15` ✅
+- `0123/20` ✅
+- `1234/21` ✅
+
+#### Invalid Search Examples:
+
+- `ST001` ❌ (missing slash and year)
+- `0014` ❌ (missing slash and year)
+- `GPR0014/14` ❌ (has prefix)
+
+**Note:** Admins can upload Excel files with any Student ID format, but students must use the XXXX/XX format when searching for their results.
 
 ## Still Having Issues?
 

@@ -5,7 +5,22 @@ class Validators {
     }
 
     const trimmed = studentId.trim();
-    return trimmed.length >= 2 && trimmed.length <= 50;
+
+    // Check for the required format: XXXX/XX (e.g., 0014/14)
+    const idPattern = /^\d{4}\/\d{2}$/;
+    return idPattern.test(trimmed);
+  }
+
+  static isValidStudentIdForSearch(studentId) {
+    if (!studentId || typeof studentId !== "string") {
+      return false;
+    }
+
+    const trimmed = studentId.trim();
+
+    // For search, accept the full format XXXX/XX
+    const idPattern = /^\d{4}\/\d{2}$/;
+    return idPattern.test(trimmed);
   }
 
   static isValidExcelFile(filename) {

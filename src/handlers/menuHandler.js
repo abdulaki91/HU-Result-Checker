@@ -106,17 +106,16 @@ class MenuHandler {
   async handleCheckResultCallback(chatId, messageId) {
     const message = `🔍 *Check Student Result*
 
-Please send your Student ID to get your results.
+Please send your Student ID in the correct format to get your results.
 
-📝 *Examples:*
-• Full ID: \`GPR0015/15\`
-• Short ID: \`0015/15\` (without prefix)
-• Simple ID: \`ST001\`
-• Numeric: \`001\`
+📝 *Required Format:*
+• Student ID: \`XXXX/XX\`
+• Example: \`0014/14\`
+• Example: \`0025/15\`
 
-💡 *Tip:* You can use either the full ID or just the numeric part!
+⚠️ *Important:* You must enter your complete Student ID including the slash (/) and year digits.
 
-Just type your Student ID and send it.`;
+Just type your Student ID in the format XXXX/XX and send it.`;
 
     const keyboard = {
       inline_keyboard: [
