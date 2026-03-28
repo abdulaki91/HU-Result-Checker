@@ -104,16 +104,33 @@ Just drag and drop your Excel file here!
     }
 
     try {
-      const studentCount = await this.database.getStudentCount();
+      Logger.info("Getting system status...");
+
+      let studentCount = 0;
+      let countError = null;
+
+      try {
+        studentCount = await this.database.getStudentCount();
+        Logger.info(`Retrieved student count: ${studentCount}`);
+      } catch (error) {
+        Logger.error("Failed to get student count:", error.message);
+        countError = error.message;
+        studentCount = "Error";
+      }
+
       const storageType = config.USE_JSON_STORAGE ? "JSON File" : "MySQL";
 
-      const statusMessage = `📊 *System Status*
+      let statusMessage = `📊 *System Status*
 
 ✅ Bot is running
 💾 Storage: ${storageType}
-👥 Students in database: ${studentCount}
+👥 Students in database: ${studentCount}`;
 
-🕐 Last updated: ${new Date().toLocaleString()}`;
+      if (countError) {
+        statusMessage += `\n⚠️ *Count Error:* ${countError}`;
+      }
+
+      statusMessage += `\n\n🕐 Last updated: ${new Date().toLocaleString()}`;
 
       const keyboard = KeyboardBuilder.getRefreshBackKeyboard("system_status");
 
@@ -124,6 +141,8 @@ Just drag and drop your Excel file here!
         reply_markup: keyboard,
       });
     } catch (error) {
+      Logger.error("System status error:", error.message);
+
       const keyboard = KeyboardBuilder.getBackToMenuKeyboard();
 
       await this.bot.editMessageText("❌ Failed to get system status", {

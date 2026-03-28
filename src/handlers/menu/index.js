@@ -90,6 +90,7 @@ class ModularMenuHandler {
             chatId,
             userId,
             messageId,
+            query,
           );
           break;
 

@@ -178,13 +178,15 @@ Choose an option below:`;
   /**
    * Handle refresh menu callback
    */
-  async handleRefreshMenuCallback(chatId, userId, messageId) {
+  async handleRefreshMenuCallback(chatId, userId, messageId, query = null) {
     // Show a brief loading message
     try {
-      await this.bot.answerCallbackQuery(query?.id, {
-        text: "🔄 Refreshing menu...",
-        show_alert: false,
-      });
+      if (query?.id) {
+        await this.bot.answerCallbackQuery(query.id, {
+          text: "🔄 Refreshing menu...",
+          show_alert: false,
+        });
+      }
     } catch (error) {
       // Ignore callback query errors
     }
@@ -195,8 +197,10 @@ Choose an option below:`;
 
     try {
       studentCount = await this.database.getStudentCount();
+      Logger.info(`Retrieved student count: ${studentCount}`);
     } catch (error) {
-      Logger.warning("Failed to get student count for refresh:", error.message);
+      Logger.error("Failed to get student count for refresh:", error.message);
+      studentCount = "Error";
     }
 
     const welcomeMessage = `🎓 *Welcome to Student Results Bot!*
