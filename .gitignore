@@ -72,6 +72,9 @@ STUDENT_ID_UPDATE_SUMMARY.md
 # Deployment helpers
 deploy-to-production.js
 check-production-files.js
+deploy.sh
+quick-deploy.sh
+manage-bot.sh
 
 # Test data files
 data/students.json
