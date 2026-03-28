@@ -5,7 +5,7 @@ const { Database } = require("../../database");
 const ExcelService = require("../../excelService");
 
 // Import handlers
-const MenuHandler = require("../handlers/menuHandler");
+const MenuHandler = require("../handlers/menu");
 const CommandHandler = require("../handlers/commandHandler");
 const FileHandler = require("../handlers/fileHandler");
 const MessageHandler = require("../handlers/messageHandler");

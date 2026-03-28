@@ -89,6 +89,18 @@ class MenuHandler {
           break;
 
         default:
+          // Handle feedback detail callbacks
+          if (data.startsWith("view_feedback_detail:")) {
+            await this.handleViewFeedbackDetailCallback(query);
+            break;
+          }
+
+          // Handle reply to feedback callbacks
+          if (data.startsWith("reply_feedback:")) {
+            await this.handleReplyFeedbackCallback(query);
+            break;
+          }
+
           // Handle toggle_column callbacks
           if (data.startsWith("toggle_column:")) {
             await this.handleToggleColumnCallback(query);
@@ -936,36 +948,61 @@ Your message will be sent to administrators.
       const feedbackList = await this.database.getRecentFeedback(10);
       const timestamp = new Date().toLocaleTimeString();
 
-      let message = `💬 *Student Feedback*\n\n`;
+      let message = `💬 *Student Feedback Management*\n\n`;
 
       if (feedbackList.length === 0) {
         message += `📭 *No feedback received yet*\n\nStudents can send feedback using the "💬 Send Feedback" button in their menu.`;
-      } else {
-        message += `📊 *Recent Feedback (Last 10):*\n\n`;
 
-        feedbackList.forEach((feedback, index) => {
-          const date = new Date(feedback.created_at).toLocaleDateString();
-          const time = new Date(feedback.created_at).toLocaleTimeString();
-          const studentInfo = feedback.student_id
-            ? `ID: ${feedback.student_id}`
-            : `User: ${feedback.user_id}`;
+        const keyboard = {
+          inline_keyboard: [
+            [{ text: "🔄 Refresh", callback_data: "view_feedback" }],
+            [{ text: "🔙 Back to Menu", callback_data: "back_to_menu" }],
+          ],
+        };
 
-          message += `**${index + 1}.** ${studentInfo}\n`;
-          message += `📅 ${date} ${time}\n`;
-          message += `💭 "${feedback.message}"\n\n`;
-        });
-
-        message += `💡 *Total feedback received:* ${feedbackList.length}`;
+        await this.bot.editMessageText(
+          message + `\n\n🕐 *Last updated:* ${timestamp}`,
+          {
+            chat_id: chatId,
+            message_id: messageId,
+            parse_mode: "Markdown",
+            reply_markup: keyboard,
+          },
+        );
+        return;
       }
 
-      message += `\n\n🕐 *Last updated:* ${timestamp}`;
+      message += `📊 *Recent Feedback (${feedbackList.length} entries):*\n\n`;
+      message += `Click on any feedback to view details and reply options.\n\n`;
 
-      const keyboard = {
-        inline_keyboard: [
-          [{ text: "🔄 Refresh", callback_data: "view_feedback" }],
-          [{ text: "🔙 Back to Menu", callback_data: "back_to_menu" }],
-        ],
-      };
+      // Create buttons for each feedback
+      const keyboard = { inline_keyboard: [] };
+
+      feedbackList.forEach((feedback, index) => {
+        const date = new Date(feedback.created_at).toLocaleDateString();
+        const studentInfo = feedback.student_id
+          ? `${feedback.student_id}`
+          : `User ${feedback.user_id}`;
+        const shortMessage =
+          feedback.message.length > 30
+            ? feedback.message.substring(0, 30) + "..."
+            : feedback.message;
+
+        keyboard.inline_keyboard.push([
+          {
+            text: `${index + 1}. ${studentInfo} - "${shortMessage}"`,
+            callback_data: `view_feedback_detail:${feedback.id}`,
+          },
+        ]);
+      });
+
+      // Add control buttons
+      keyboard.inline_keyboard.push([
+        { text: "🔄 Refresh", callback_data: "view_feedback" },
+        { text: "🔙 Back to Menu", callback_data: "back_to_menu" },
+      ]);
+
+      message += `🕐 *Last updated:* ${timestamp}`;
 
       await this.bot.editMessageText(message, {
         chat_id: chatId,
@@ -992,6 +1029,199 @@ Your message will be sent to administrators.
         chat_id: chatId,
         message_id: messageId,
         reply_markup: keyboard,
+      });
+    }
+  }
+
+  async handleViewFeedbackDetailCallback(query) {
+    const chatId = query.message.chat.id;
+    const userId = query.from.id;
+    const messageId = query.message.message_id;
+    const feedbackId = query.data.split(":")[1];
+
+    if (userId !== config.ADMIN_USER_ID) {
+      return;
+    }
+
+    try {
+      const feedback = await this.database.getFeedbackById(feedbackId);
+
+      if (!feedback) {
+        await this.bot.editMessageText("❌ Feedback not found", {
+          chat_id: chatId,
+          message_id: messageId,
+          reply_markup: {
+            inline_keyboard: [
+              [
+                {
+                  text: "🔙 Back to Feedback List",
+                  callback_data: "view_feedback",
+                },
+              ],
+            ],
+          },
+        });
+        return;
+      }
+
+      const date = new Date(feedback.created_at).toLocaleDateString();
+      const time = new Date(feedback.created_at).toLocaleTimeString();
+      const studentInfo = feedback.student_id
+        ? `${feedback.student_id}`
+        : `User ${feedback.user_id}`;
+
+      const message = `💬 *Feedback Details*
+
+👤 *From:* ${feedback.user_name} ${feedback.user_username || ""}
+🆔 *Student/User:* ${studentInfo}
+📅 *Date:* ${date} ${time}
+🆔 *Feedback ID:* ${feedback.id}
+
+💭 *Message:*
+"${feedback.message}"
+
+📊 *Status:* ${feedback.replied ? "✅ Replied" : "⏳ Pending Reply"}`;
+
+      const keyboard = {
+        inline_keyboard: [
+          [
+            {
+              text: "💬 Reply to Student",
+              callback_data: `reply_feedback:${feedback.id}`,
+            },
+          ],
+          [
+            {
+              text: "🔙 Back to Feedback List",
+              callback_data: "view_feedback",
+            },
+          ],
+          [{ text: "🏠 Main Menu", callback_data: "back_to_menu" }],
+        ],
+      };
+
+      await this.bot.editMessageText(message, {
+        chat_id: chatId,
+        message_id: messageId,
+        parse_mode: "Markdown",
+        reply_markup: keyboard,
+      });
+    } catch (error) {
+      Logger.error("View feedback detail error:", error.message);
+
+      await this.bot.editMessageText("❌ Error loading feedback details", {
+        chat_id: chatId,
+        message_id: messageId,
+        reply_markup: {
+          inline_keyboard: [
+            [
+              {
+                text: "🔙 Back to Feedback List",
+                callback_data: "view_feedback",
+              },
+            ],
+          ],
+        },
+      });
+    }
+  }
+
+  async handleReplyFeedbackCallback(query) {
+    const chatId = query.message.chat.id;
+    const userId = query.from.id;
+    const messageId = query.message.message_id;
+    const feedbackId = query.data.split(":")[1];
+
+    if (userId !== config.ADMIN_USER_ID) {
+      return;
+    }
+
+    try {
+      const feedback = await this.database.getFeedbackById(feedbackId);
+
+      if (!feedback) {
+        await this.bot.editMessageText("❌ Feedback not found", {
+          chat_id: chatId,
+          message_id: messageId,
+          reply_markup: {
+            inline_keyboard: [
+              [
+                {
+                  text: "🔙 Back to Feedback List",
+                  callback_data: "view_feedback",
+                },
+              ],
+            ],
+          },
+        });
+        return;
+      }
+
+      const studentInfo = feedback.student_id
+        ? `${feedback.student_id}`
+        : `User ${feedback.user_id}`;
+
+      const message = `💬 *Reply to Feedback*
+
+👤 *Student:* ${feedback.user_name} (${studentInfo})
+💭 *Their message:* "${feedback.message}"
+
+✍️ *Instructions:*
+Type your reply message and send it. The student will receive your response directly.
+
+⚠️ *Note:* Your next message will be sent as a reply to this student.`;
+
+      const keyboard = {
+        inline_keyboard: [
+          [
+            {
+              text: "❌ Cancel Reply",
+              callback_data: `view_feedback_detail:${feedbackId}`,
+            },
+          ],
+          [
+            {
+              text: "🔙 Back to Feedback List",
+              callback_data: "view_feedback",
+            },
+          ],
+        ],
+      };
+
+      await this.bot.editMessageText(message, {
+        chat_id: chatId,
+        message_id: messageId,
+        parse_mode: "Markdown",
+        reply_markup: keyboard,
+      });
+
+      // Set admin state to expect reply
+      global.adminStates = global.adminStates || {};
+      global.adminStates[userId] = {
+        state: "waiting_reply",
+        feedbackId: feedbackId,
+        studentUserId: feedback.user_id,
+        studentName: feedback.user_name,
+        originalMessage: feedback.message,
+        chatId: chatId,
+        messageId: messageId,
+      };
+    } catch (error) {
+      Logger.error("Reply feedback error:", error.message);
+
+      await this.bot.editMessageText("❌ Error preparing reply", {
+        chat_id: chatId,
+        message_id: messageId,
+        reply_markup: {
+          inline_keyboard: [
+            [
+              {
+                text: "🔙 Back to Feedback List",
+                callback_data: "view_feedback",
+              },
+            ],
+          ],
+        },
       });
     }
   }

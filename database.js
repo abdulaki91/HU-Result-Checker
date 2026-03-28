@@ -740,9 +740,12 @@ class Database {
         user_name VARCHAR(255) NOT NULL,
         user_username VARCHAR(255) NULL,
         message TEXT NOT NULL,
+        replied BOOLEAN DEFAULT FALSE,
+        replied_at TIMESTAMP NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         INDEX idx_user_id (user_id),
-        INDEX idx_created_at (created_at)
+        INDEX idx_created_at (created_at),
+        INDEX idx_replied (replied)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `;
 
@@ -857,6 +860,113 @@ class Database {
     } catch (error) {
       console.error("❌ Error reading feedback from MySQL:", error.message);
       return [];
+    }
+  }
+
+  async getFeedbackById(feedbackId) {
+    if (config.USE_JSON_STORAGE) {
+      return await this.getFeedbackByIdJson(feedbackId);
+    } else {
+      return await this.getFeedbackByIdMySQL(feedbackId);
+    }
+  }
+
+  async getFeedbackByIdJson(feedbackId) {
+    try {
+      const feedbackPath = path.join(__dirname, "data/feedback.json");
+
+      if (!fsSync.existsSync(feedbackPath)) {
+        return null;
+      }
+
+      const feedbackContent = fsSync.readFileSync(feedbackPath, "utf8");
+      const feedbackList = JSON.parse(feedbackContent);
+
+      return feedbackList.find((feedback) => feedback.id == feedbackId) || null;
+    } catch (error) {
+      console.error(
+        "❌ Error reading feedback by ID from JSON:",
+        error.message,
+      );
+      return null;
+    }
+  }
+
+  async getFeedbackByIdMySQL(feedbackId) {
+    try {
+      const selectQuery = `SELECT * FROM feedback WHERE id = ?`;
+      const [rows] = await this.connection.execute(selectQuery, [feedbackId]);
+
+      return rows.length > 0 ? rows[0] : null;
+    } catch (error) {
+      console.error(
+        "❌ Error reading feedback by ID from MySQL:",
+        error.message,
+      );
+      return null;
+    }
+  }
+
+  async markFeedbackAsReplied(feedbackId) {
+    if (config.USE_JSON_STORAGE) {
+      return await this.markFeedbackAsRepliedJson(feedbackId);
+    } else {
+      return await this.markFeedbackAsRepliedMySQL(feedbackId);
+    }
+  }
+
+  async markFeedbackAsRepliedJson(feedbackId) {
+    try {
+      const feedbackPath = path.join(__dirname, "data/feedback.json");
+
+      if (!fsSync.existsSync(feedbackPath)) {
+        return false;
+      }
+
+      const feedbackContent = fsSync.readFileSync(feedbackPath, "utf8");
+      const feedbackList = JSON.parse(feedbackContent);
+
+      const feedbackIndex = feedbackList.findIndex(
+        (feedback) => feedback.id == feedbackId,
+      );
+      if (feedbackIndex === -1) {
+        return false;
+      }
+
+      feedbackList[feedbackIndex].replied = true;
+      feedbackList[feedbackIndex].replied_at = new Date().toISOString();
+
+      fsSync.writeFileSync(feedbackPath, JSON.stringify(feedbackList, null, 2));
+      console.log("✅ Feedback marked as replied in JSON");
+
+      return true;
+    } catch (error) {
+      console.error(
+        "❌ Error marking feedback as replied in JSON:",
+        error.message,
+      );
+      return false;
+    }
+  }
+
+  async markFeedbackAsRepliedMySQL(feedbackId) {
+    try {
+      const updateQuery = `
+        UPDATE feedback 
+        SET replied = TRUE, replied_at = NOW() 
+        WHERE id = ?
+      `;
+
+      const [result] = await this.connection.execute(updateQuery, [feedbackId]);
+      console.log("✅ Feedback marked as replied in MySQL");
+
+      return result.affectedRows > 0;
+    } catch (error) {
+      console.error(
+        "❌ Error marking feedback as replied in MySQL:",
+        error.message,
+      );
+      return false;
     }
   }
 }
