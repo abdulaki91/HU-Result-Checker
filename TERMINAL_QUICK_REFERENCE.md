@@ -6,22 +6,28 @@ Since you use terminal to pull code to your server, here are the essential comma
 
 ## ⚡ Quick Commands (Copy & Paste Ready)
 
-### Standard Deployment
+### Standard Deployment (Fixed)
 
 ```bash
-cd repositories/telegram-student-results-bot && git pull origin main && npm install && pm2 restart telegram-bot
+cd repositories/telegram-student-results-bot && git pull origin main && npm install && npm restart
+```
+
+### With PM2 (Recommended)
+
+```bash
+cd repositories/telegram-student-results-bot && git pull origin main && npm install && npm run pm2:restart
 ```
 
 ### Manual Restart (if no PM2)
 
 ```bash
-cd repositories/telegram-student-results-bot && git pull origin main && npm install && pkill -f "node app.js" && nohup node app.js > app.log 2>&1 &
+cd repositories/telegram-student-results-bot && git pull origin main && npm install && npm run stop && npm start
 ```
 
 ### With Status Check
 
 ```bash
-cd repositories/telegram-student-results-bot && git pull origin main && pm2 restart telegram-bot && curl -s https://checkresultbot.abdulaki.com/status
+cd repositories/telegram-student-results-bot && git pull origin main && npm restart && curl -s https://checkresultbot.abdulaki.com/status
 ```
 
 ## 🔄 Node.js Restart Methods
