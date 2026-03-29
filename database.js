@@ -209,21 +209,59 @@ class Database {
     }
   }
 
+  /**
+   * Merge new student data with existing data
+   * Updates existing students and adds new ones
+   */
+  mergeStudentData(existingData, newData) {
+    const merged = [...existingData];
+
+    newData.forEach((newStudent) => {
+      const existingIndex = merged.findIndex(
+        (existing) =>
+          existing.studentId.toString().trim() ===
+          newStudent.studentId.toString().trim(),
+      );
+
+      if (existingIndex !== -1) {
+        // Update existing student
+        merged[existingIndex] = { ...merged[existingIndex], ...newStudent };
+      } else {
+        // Add new student
+        merged.push(newStudent);
+      }
+    });
+
+    return merged;
+  }
+
   async saveStudents(studentsData) {
     try {
       if (config.USE_JSON_STORAGE) {
-        this.students = studentsData;
+        // For JSON storage, merge with existing data
+        const existingData = this.students || [];
+        const mergedData = this.mergeStudentData(existingData, studentsData);
+        this.students = mergedData;
         await this.saveJsonData();
-        console.log(`✅ Saved ${studentsData.length} students to JSON file`);
+        console.log(
+          `✅ Merged ${studentsData.length} students with existing data. Total: ${mergedData.length} students in JSON file`,
+        );
       } else {
-        // Clear existing data
-        await this.connection.execute("DELETE FROM students");
-
-        // Prepare bulk insert
+        // For MySQL, use INSERT ... ON DUPLICATE KEY UPDATE to merge data
         if (studentsData.length > 0) {
           const insertQuery = `
             INSERT INTO students (student_name, student_id, quiz, mid, assignment, group_assignment, project, final, total, grade)
             VALUES ?
+            ON DUPLICATE KEY UPDATE
+              student_name = VALUES(student_name),
+              quiz = VALUES(quiz),
+              mid = VALUES(mid),
+              assignment = VALUES(assignment),
+              group_assignment = VALUES(group_assignment),
+              project = VALUES(project),
+              final = VALUES(final),
+              total = VALUES(total),
+              grade = VALUES(grade)
           `;
 
           const values = studentsData.map((student) => [
@@ -242,8 +280,14 @@ class Database {
           await this.connection.query(insertQuery, [values]);
         }
 
+        // Get total count after merge
+        const [countResult] = await this.connection.execute(
+          "SELECT COUNT(*) as total FROM students",
+        );
+        const totalStudents = countResult[0].total;
+
         console.log(
-          `✅ Saved ${studentsData.length} students to MySQL database`,
+          `✅ Merged ${studentsData.length} students with existing data. Total: ${totalStudents} students in MySQL database`,
         );
       }
 
@@ -380,6 +424,26 @@ class Database {
     } catch (error) {
       console.error("❌ Failed to get student count:", error.message);
       return 0;
+    }
+  }
+
+  /**
+   * Clear all student data (admin only)
+   */
+  async clearAllStudents() {
+    try {
+      if (config.USE_JSON_STORAGE) {
+        this.students = [];
+        await this.saveJsonData();
+        console.log("✅ Cleared all students from JSON file");
+      } else {
+        await this.connection.execute("DELETE FROM students");
+        console.log("✅ Cleared all students from MySQL database");
+      }
+      return true;
+    } catch (error) {
+      console.error("❌ Failed to clear students:", error.message);
+      throw error;
     }
   }
 

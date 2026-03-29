@@ -106,9 +106,12 @@ class FileHandler {
 📊 *Summary:*
 • Students processed: ${studentsData.length}
 • File: ${document.file_name}
+• Action: Merged with existing data
 • Updated: ${new Date().toLocaleString()}
 
-🎯 Students can now check their results by sending their Student ID.`;
+🎯 Students can now check their results by sending their Student ID.
+
+💡 *Note:* New students were added and existing students were updated with the latest data.`;
 
       const successKeyboard = {
         inline_keyboard: [

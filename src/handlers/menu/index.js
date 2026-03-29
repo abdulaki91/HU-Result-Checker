@@ -157,6 +157,23 @@ class ModularMenuHandler {
           await this.settingsHandlers.handleUpdateCourseInfoCallback(query);
           break;
 
+        // Clear data handlers
+        case "clear_all_data":
+          await this.adminHandlers.handleClearAllDataCallback(
+            chatId,
+            userId,
+            messageId,
+          );
+          break;
+
+        case "confirm_clear_all":
+          await this.adminHandlers.handleConfirmClearAllCallback(
+            chatId,
+            userId,
+            messageId,
+          );
+          break;
+
         default:
           // Handle complex callback data with parameters
           await this._handleParameterizedCallbacks(query);

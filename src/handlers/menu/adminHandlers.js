@@ -132,7 +132,13 @@ Just drag and drop your Excel file here!
 
       statusMessage += `\n\n🕐 Last updated: ${new Date().toLocaleString()}`;
 
-      const keyboard = KeyboardBuilder.getRefreshBackKeyboard("system_status");
+      const keyboard = {
+        inline_keyboard: [
+          [{ text: "🔄 Refresh", callback_data: "system_status" }],
+          [{ text: "🗑️ Clear All Data", callback_data: "clear_all_data" }],
+          [{ text: "🔙 Back to Menu", callback_data: "back_to_menu" }],
+        ],
+      };
 
       await this.bot.editMessageText(statusMessage, {
         chat_id: chatId,
@@ -214,8 +220,112 @@ The bot supports flexible column names including:
   }
 
   /**
-   * Private method to handle errors consistently
+   * Handle clear all data callback
    */
+  async handleClearAllDataCallback(chatId, userId, messageId) {
+    if (!this._isAdmin(userId)) {
+      await this._handleAccessDenied(chatId, messageId);
+      return;
+    }
+
+    try {
+      const confirmMessage = `⚠️ *Clear All Student Data*
+
+🚨 **WARNING:** This action will permanently delete ALL student records from the database.
+
+This action cannot be undone!
+
+Are you sure you want to proceed?`;
+
+      const keyboard = {
+        inline_keyboard: [
+          [
+            { text: "✅ Yes, Clear All", callback_data: "confirm_clear_all" },
+            { text: "❌ Cancel", callback_data: "system_status" },
+          ],
+        ],
+      };
+
+      await this.bot.editMessageText(confirmMessage, {
+        chat_id: chatId,
+        message_id: messageId,
+        parse_mode: "Markdown",
+        reply_markup: keyboard,
+      });
+    } catch (error) {
+      await this._handleError(
+        error,
+        chatId,
+        messageId,
+        "clear_all_data",
+        "Clear data system temporarily unavailable",
+      );
+    }
+  }
+
+  /**
+   * Handle confirm clear all data callback
+   */
+  async handleConfirmClearAllCallback(chatId, userId, messageId) {
+    if (!this._isAdmin(userId)) {
+      await this._handleAccessDenied(chatId, messageId);
+      return;
+    }
+
+    try {
+      // Show processing message
+      await this.bot.editMessageText("🗑️ Clearing all student data...", {
+        chat_id: chatId,
+        message_id: messageId,
+      });
+
+      // Clear the data
+      await this.database.clearAllStudents();
+
+      const successMessage = `✅ *All Data Cleared Successfully*
+
+🗑️ All student records have been permanently deleted from the database.
+
+You can now upload new Excel files to populate the database with fresh data.`;
+
+      const keyboard = {
+        inline_keyboard: [
+          [{ text: "📊 Upload Excel File", callback_data: "upload_excel" }],
+          [{ text: "📈 System Status", callback_data: "system_status" }],
+          [{ text: "🏠 Main Menu", callback_data: "back_to_menu" }],
+        ],
+      };
+
+      await this.bot.editMessageText(successMessage, {
+        chat_id: chatId,
+        message_id: messageId,
+        parse_mode: "Markdown",
+        reply_markup: keyboard,
+      });
+    } catch (error) {
+      Logger.error("Clear all data error:", error.message);
+
+      const errorMessage = `❌ *Failed to Clear Data*
+
+Error: ${error.message}
+
+Please try again or contact support.`;
+
+      const keyboard = {
+        inline_keyboard: [
+          [{ text: "🔄 Try Again", callback_data: "clear_all_data" }],
+          [{ text: "🔙 Back to Menu", callback_data: "back_to_menu" }],
+        ],
+      };
+
+      await this.bot.editMessageText(errorMessage, {
+        chat_id: chatId,
+        message_id: messageId,
+        parse_mode: "Markdown",
+        reply_markup: keyboard,
+      });
+    }
+  }
   async _handleError(error, chatId, messageId, callbackData, fallbackMessage) {
     // Handle "message is not modified" error gracefully
     if (error.message.includes("message is not modified")) {
