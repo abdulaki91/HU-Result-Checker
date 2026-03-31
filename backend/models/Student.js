@@ -1,0 +1,362 @@
+const { DataTypes } = require("sequelize");
+const { sequelize } = require("../config/database");
+
+const Student = sequelize.define(
+  "Student",
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true,
+    },
+    // Personal Information
+    fullName: {
+      type: DataTypes.STRING(100),
+      allowNull: false,
+      validate: {
+        len: [2, 100],
+      },
+    },
+    // Academic Information
+    studentId: {
+      type: DataTypes.STRING(50),
+      allowNull: false,
+      unique: true,
+      validate: {
+        is: /^[A-Z0-9-/]+$/,
+      },
+    },
+    department: {
+      type: DataTypes.ENUM(
+        "Computer Science",
+        "Information Technology",
+        "Software Engineering",
+        "Electrical Engineering",
+        "Mechanical Engineering",
+        "Civil Engineering",
+        "Business Administration",
+        "Economics",
+        "Mathematics",
+        "Physics",
+        "Chemistry",
+        "Biology",
+        "English",
+        "Other",
+      ),
+      allowNull: false,
+    },
+    batch: {
+      type: DataTypes.STRING(4),
+      allowNull: false,
+      validate: {
+        is: /^\d{4}$/,
+      },
+    },
+    semester: {
+      type: DataTypes.ENUM("Fall", "Spring", "Summer"),
+      allowNull: false,
+    },
+    academicYear: {
+      type: DataTypes.STRING(9),
+      allowNull: false,
+      validate: {
+        is: /^\d{4}-\d{4}$/,
+      },
+    },
+    // Contact Information
+    email: {
+      type: DataTypes.STRING(100),
+      allowNull: true,
+      validate: {
+        isEmail: true,
+      },
+    },
+    phone: {
+      type: DataTypes.STRING(20),
+      allowNull: true,
+      validate: {
+        is: /^[\+]?[0-9\s\-\(\)]{10,15}$/,
+      },
+    },
+    // Academic Performance
+    gpa: {
+      type: DataTypes.DECIMAL(3, 2),
+      defaultValue: 0.0,
+      validate: {
+        min: 0,
+        max: 4,
+      },
+    },
+    cgpa: {
+      type: DataTypes.DECIMAL(3, 2),
+      defaultValue: 0.0,
+      validate: {
+        min: 0,
+        max: 4,
+      },
+    },
+    totalCreditHours: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0,
+      validate: {
+        min: 0,
+      },
+    },
+    completedCreditHours: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0,
+      validate: {
+        min: 0,
+      },
+    },
+    // Status
+    status: {
+      type: DataTypes.ENUM("Active", "Graduated", "Suspended", "Withdrawn"),
+      defaultValue: "Active",
+    },
+    // Metadata
+    uploadedBy: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: "users",
+        key: "id",
+      },
+    },
+    lastUpdated: {
+      type: DataTypes.DATE,
+      defaultValue: DataTypes.NOW,
+    },
+  },
+  {
+    tableName: "students",
+    hooks: {
+      beforeSave: async (student) => {
+        student.lastUpdated = new Date();
+      },
+    },
+  },
+);
+
+// Course model for storing individual courses
+const Course = sequelize.define(
+  "Course",
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true,
+    },
+    studentId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: "students",
+        key: "id",
+      },
+    },
+    courseCode: {
+      type: DataTypes.STRING(20),
+      allowNull: false,
+    },
+    courseName: {
+      type: DataTypes.STRING(200),
+      allowNull: false,
+    },
+    creditHours: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      validate: {
+        min: 1,
+        max: 6,
+      },
+    },
+    grade: {
+      type: DataTypes.ENUM(
+        "A+",
+        "A",
+        "A-",
+        "B+",
+        "B",
+        "B-",
+        "C+",
+        "C",
+        "C-",
+        "D+",
+        "D",
+        "F",
+        "I",
+        "W",
+      ),
+      allowNull: false,
+    },
+    gradePoints: {
+      type: DataTypes.DECIMAL(3, 2),
+      allowNull: false,
+      validate: {
+        min: 0,
+        max: 4,
+      },
+    },
+    // Marks breakdown
+    quizMarks: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0,
+      validate: { min: 0, max: 100 },
+    },
+    midtermMarks: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0,
+      validate: { min: 0, max: 100 },
+    },
+    assignmentMarks: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0,
+      validate: { min: 0, max: 100 },
+    },
+    projectMarks: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0,
+      validate: { min: 0, max: 100 },
+    },
+    finalMarks: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0,
+      validate: { min: 0, max: 100 },
+    },
+    totalMarks: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0,
+      validate: { min: 0, max: 100 },
+    },
+  },
+  {
+    tableName: "courses",
+  },
+);
+
+// Define associations
+Student.hasMany(Course, { foreignKey: "studentId", as: "courses" });
+Course.belongsTo(Student, { foreignKey: "studentId" });
+
+// Static method to get grade points from letter grade
+Student.getGradePoints = function (grade) {
+  const gradeMap = {
+    "A+": 4.0,
+    A: 4.0,
+    "A-": 3.7,
+    "B+": 3.3,
+    B: 3.0,
+    "B-": 2.7,
+    "C+": 2.3,
+    C: 2.0,
+    "C-": 1.7,
+    "D+": 1.3,
+    D: 1.0,
+    F: 0.0,
+    I: 0.0,
+    W: 0.0,
+  };
+  return gradeMap[grade] || 0;
+};
+
+// Static method to calculate grade from marks
+Student.calculateGrade = function (totalMarks) {
+  if (totalMarks >= 90) return "A+";
+  if (totalMarks >= 85) return "A";
+  if (totalMarks >= 80) return "A-";
+  if (totalMarks >= 75) return "B+";
+  if (totalMarks >= 70) return "B";
+  if (totalMarks >= 65) return "B-";
+  if (totalMarks >= 60) return "C+";
+  if (totalMarks >= 55) return "C";
+  if (totalMarks >= 50) return "C-";
+  if (totalMarks >= 45) return "D+";
+  if (totalMarks >= 40) return "D";
+  return "F";
+};
+
+// Instance method to calculate GPA
+Student.prototype.calculateGPA = async function () {
+  const courses = await Course.findAll({
+    where: { studentId: this.id },
+  });
+
+  if (courses.length === 0) {
+    this.gpa = 0;
+    this.totalCreditHours = 0;
+    this.completedCreditHours = 0;
+    return;
+  }
+
+  let totalGradePoints = 0;
+  let totalCreditHours = 0;
+  let completedCreditHours = 0;
+
+  courses.forEach((course) => {
+    totalGradePoints += course.gradePoints * course.creditHours;
+    totalCreditHours += course.creditHours;
+
+    if (!["F", "I", "W"].includes(course.grade)) {
+      completedCreditHours += course.creditHours;
+    }
+  });
+
+  this.gpa = totalCreditHours > 0 ? totalGradePoints / totalCreditHours : 0;
+  this.totalCreditHours = totalCreditHours;
+  this.completedCreditHours = completedCreditHours;
+};
+
+// Instance method to get grade status
+Student.prototype.getGradeStatus = function () {
+  if (this.gpa >= 3.5) return "Excellent";
+  if (this.gpa >= 3.0) return "Good";
+  if (this.gpa >= 2.5) return "Satisfactory";
+  if (this.gpa >= 2.0) return "Pass";
+  return "Fail";
+};
+
+// Instance method to get transcript
+Student.prototype.getTranscript = async function () {
+  const courses = await Course.findAll({
+    where: { studentId: this.id },
+    order: [["courseCode", "ASC"]],
+  });
+
+  return {
+    studentInfo: {
+      fullName: this.fullName,
+      studentId: this.studentId,
+      department: this.department,
+      batch: this.batch,
+      semester: this.semester,
+      academicYear: this.academicYear,
+    },
+    academicPerformance: {
+      gpa: this.gpa,
+      cgpa: this.cgpa,
+      totalCreditHours: this.totalCreditHours,
+      completedCreditHours: this.completedCreditHours,
+      status: this.status,
+      gradeStatus: this.getGradeStatus(),
+    },
+    courses: courses.map((course) => ({
+      courseCode: course.courseCode,
+      courseName: course.courseName,
+      creditHours: course.creditHours,
+      grade: course.grade,
+      gradePoints: course.gradePoints,
+      marks: {
+        quiz: course.quizMarks,
+        midterm: course.midtermMarks,
+        assignment: course.assignmentMarks,
+        project: course.projectMarks,
+        final: course.finalMarks,
+        total: course.totalMarks,
+      },
+    })),
+    generatedAt: new Date(),
+  };
+};
+
+module.exports = { Student, Course };

@@ -1,304 +1,284 @@
-# 🤖 Telegram Student Results Bot
+# Student Result Management System
 
-A comprehensive Telegram bot system for managing and checking student results with Excel file processing, MySQL database integration, and cPanel hosting support.
+A modern, full-stack web application for managing and accessing student academic results. Built with React, Node.js, Express, and MongoDB.
 
-## ✨ Features
-
-- **📊 Excel File Processing**: Upload and process student results from Excel files
-- **🔍 Flexible Student Search**: Students can search with full or partial IDs
-- **👨‍💼 Admin Panel**: Complete admin interface for managing results and settings
-- **📋 Column Management**: Admins can control which columns are visible to students
-- **🎓 Course Information**: Add course name and instructor details
-- **🗄️ Dual Storage**: Support for both MySQL database and JSON file storage
-- **🌐 cPanel Ready**: Optimized for cPanel shared hosting with webhook support
-- **🔄 Real-time Updates**: Refresh functionality throughout the interface
-- **📱 Interactive Menus**: User-friendly Telegram inline keyboards
-- **🛡️ Error Handling**: Comprehensive error handling and logging
-
-## 🚀 Quick Start
-
-### Prerequisites
-
-- Node.js 14+
-- MySQL database (or use JSON storage)
-- Telegram Bot Token (from [@BotFather](https://t.me/botfather))
-- Your Telegram User ID (from [@userinfobot](https://t.me/userinfobot))
-
-### Installation
-
-1. **Clone the repository**
-
-   ```bash
-   git clone https://github.com/yourusername/telegram-student-results-bot.git
-   cd telegram-student-results-bot
-   ```
-
-2. **Install dependencies**
-
-   ```bash
-   npm install
-   ```
-
-3. **Configure environment**
-
-   ```bash
-   cp .env.cpanel.example .env
-   # Edit .env with your configuration
-   ```
-
-4. **Setup database** (if using MySQL)
-
-   ```bash
-   npm run setup-db
-   ```
-
-5. **Test configuration**
-
-   ```bash
-   npm run test-config
-   ```
-
-6. **Start the bot**
-
-   ```bash
-   # For local development (polling mode)
-   npm run dev
-
-   # For production/cPanel (webhook mode)
-   npm start
-   ```
-
-## 🔧 Configuration
-
-### Environment Variables (.env)
-
-```env
-# Bot Configuration
-BOT_TOKEN=your_telegram_bot_token
-ADMIN_USER_ID=your_telegram_user_id
-
-# cPanel Hosting
-BOT_BASE_URL=http://yourdomain.com
-CPANEL_DOMAIN=yourdomain.com
-PROTOCOL=http
-NODE_ENV=production
-
-# Database (MySQL)
-DB_HOST=localhost
-DB_USER=your_db_user
-DB_PASSWORD=your_db_password
-DB_NAME=your_db_name
-
-# Or use JSON storage
-USE_JSON_STORAGE=false
-```
-
-### Your Bot URLs
-
-- **Home**: `http://yourdomain.com/`
-- **Status**: `http://yourdomain.com/status`
-- **Health**: `http://yourdomain.com/health`
-- **Webhook**: `http://yourdomain.com/webhook`
-
-## 📋 Excel File Format
-
-The bot accepts Excel files with the following columns:
-
-### Required Columns
-
-- **NAME**: Student name
-- **ID**: Student ID (supports flexible matching)
-
-### Optional Columns
-
-- **Quiz**: Quiz scores
-- **Mid**: Midterm scores
-- **Assignment**: Assignment scores
-- **Group Assignment**: Group assignment scores
-- **Project**: Project scores
-- **Final**: Final exam scores
-- **Total**: Total scores
-- **Grade**: Final grade (accepts any text including "--", "N/A")
-
-### Example Excel Structure
-
-| NAME       | ID        | Quiz | Mid | Assignment | Group Assignment | Project | Final | Total | Grade |
-| ---------- | --------- | ---- | --- | ---------- | ---------------- | ------- | ----- | ----- | ----- |
-| John Doe   | GPR001/23 | 85   | 78  | 90         | 88               | 92      | 85    | 518   | A     |
-| Jane Smith | GPR002/23 | 92   | 85  | 88         | 90               | 89      | 91    | 535   | A+    |
-
-## 🎯 Usage
+## 🚀 Features
 
 ### For Students
 
-1. Start the bot: `/start`
-2. Choose "🔍 Check My Result"
-3. Enter your student ID (full or partial)
-4. View your results
+- **Quick Result Check**: Enter student ID to instantly view results
+- **Detailed Transcripts**: View comprehensive course-wise grades and GPA
+- **PDF Downloads**: Download official transcripts as PDF
+- **Search Functionality**: Search for students by name or ID
+- **Responsive Design**: Works seamlessly on desktop and mobile
 
-### For Admins
+### For Administrators
 
-1. Start the bot: `/start`
-2. Access admin panel with various options:
-   - **📤 Upload Results**: Upload Excel files
-   - **👥 View All Students**: Browse all records
-   - **⚙️ Column Settings**: Control visible columns
-   - **🎓 Course Settings**: Set course information
-   - **🔄 Refresh**: Update interface
+- **Dashboard**: Overview of system statistics and performance
+- **Student Management**: View, edit, and manage student records
+- **Excel Import**: Bulk import student results from Excel files
+- **Analytics**: Comprehensive performance analytics and reports
+- **Multi-Department Support**: Handle multiple departments and batches
 
-### Student ID Flexibility
+### Technical Features
 
-Students can search using:
+- **Modern UI**: Clean, elegant, and attractive interface
+- **Real-time Updates**: Live data updates and notifications
+- **Secure Authentication**: JWT-based admin authentication
+- **File Upload**: Drag-and-drop Excel file uploads
+- **Data Validation**: Comprehensive input validation and error handling
+- **Performance Optimized**: Fast loading and efficient data processing
 
-- Full ID: `GPR001/23`
-- Partial ID: `001/23` (removes common prefixes like GPR, STU, etc.)
+## 🛠️ Technology Stack
+
+### Frontend
+
+- **React 18** with Vite
+- **React Router** for navigation
+- **Tailwind CSS** for styling
+- **Framer Motion** for animations
+- **React Hook Form** for form handling
+- **React Hot Toast** for notifications
+- **Lucide React** for icons
+- **Axios** for API calls
+
+### Backend
+
+- **Node.js** with Express.js
+- **MongoDB** with Mongoose ODM
+- **JWT** for authentication
+- **Multer** for file uploads
+- **XLSX** for Excel processing
+- **PDF-lib** for PDF generation
+- **Bcrypt** for password hashing
+- **Express Validator** for input validation
+
+## 📋 Prerequisites
+
+- Node.js (v16 or higher)
+- MySQL (v8.0 or higher)
+- npm or yarn package manager
+
+## 🚀 Quick Start
+
+### 1. Clone the Repository
+
+```bash
+git clone <repository-url>
+cd student-result-system
+```
+
+### 2. Install Dependencies
+
+```bash
+# Install root dependencies
+npm install
+
+# Install all dependencies (frontend + backend)
+npm run install:all
+```
+
+### 3. Environment Configuration
+
+#### Backend Environment (.env)
+
+Create `backend/.env` file:
+
+```env
+NODE_ENV=development
+PORT=5000
+MONGODB_URI=mongodb://localhost:27017/student_results
+JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
+JWT_EXPIRES_IN=7d
+CLIENT_URL=http://localhost:5173
+```
+
+#### Frontend Environment (.env)
+
+Create `frontend/.env` file:
+
+```env
+VITE_API_URL=http://localhost:5000/api
+VITE_APP_NAME=Student Result System
+```
+
+### 4. Start MongoDB
+
+Make sure MongoDB is running on your system:
+
+```bash
+# On macOS with Homebrew
+brew services start mongodb-community
+
+# On Ubuntu/Debian
+sudo systemctl start mongod
+
+# On Windows
+net start MongoDB
+```
+
+### 5. Seed the Database (Optional)
+
+Populate the database with sample data:
+
+```bash
+cd backend
+npm run seed
+```
+
+This creates:
+
+- Admin user (username: `admin`, password: `admin123`)
+- Sample students across multiple departments
+- Realistic grade distributions and course data
+
+### 6. Start the Application
+
+```bash
+# Start both frontend and backend
+npm run dev
+
+# Or start them separately:
+npm run backend:dev  # Backend on http://localhost:5000
+npm run frontend:dev # Frontend on http://localhost:5173
+```
+
+## 📚 Usage
+
+### Student Access
+
+1. Visit the homepage
+2. Click "Check Your Result" or navigate to `/check-result`
+3. Enter your student ID (e.g., `CS-2023-001`)
+4. View your results and download PDF transcript
+
+### Admin Access
+
+1. Navigate to `/admin/login`
+2. Login with credentials:
+   - Username: `admin`
+   - Password: `admin123`
+3. Access the admin dashboard to:
+   - View system statistics
+   - Manage student records
+   - Upload Excel files with student data
+   - Generate reports and analytics
+
+### Excel Upload Format
+
+When uploading student data, ensure your Excel file has these columns:
+
+**Required:**
+
+- Full Name
+- Student ID
+- Department
+- Batch (4-digit year)
+
+**Optional:**
+
+- Email
+- Phone
+- Semester
+- Academic Year
+- Course details (course1_code, course1_name, course1_credits, course1_grade, etc.)
 
 ## 🏗️ Project Structure
 
 ```
-├── src/
-│   ├── bot/
-│   │   └── StudentResultsBot.js     # Main bot class
-│   ├── handlers/
-│   │   ├── commandHandler.js        # Command handling
-│   │   ├── fileHandler.js           # File upload handling
-│   │   ├── menuHandler.js           # Menu interactions
-│   │   └── messageHandler.js        # Text message handling
-│   └── utils/
-│       ├── logger.js                # Logging utility
-│       └── validators.js            # Input validation
-├── data/                            # JSON storage (if enabled)
-├── temp/                            # Temporary file storage
-├── app.js                           # cPanel entry point (webhook)
-├── bot.js                           # Local development (polling)
-├── webhook-bot.js                   # Webhook mode
-├── database.js                      # Database operations
-├── excelService.js                  # Excel processing
-├── config.js                        # Configuration management
-└── setup-database.js               # Database setup
+student-result-system/
+├── frontend/                 # React frontend
+│   ├── src/
+│   │   ├── components/      # Reusable components
+│   │   ├── contexts/        # React contexts
+│   │   ├── pages/          # Page components
+│   │   ├── services/       # API services
+│   │   └── utils/          # Utility functions
+│   ├── public/             # Static assets
+│   └── package.json
+├── backend/                 # Node.js backend
+│   ├── controllers/        # Route controllers
+│   ├── middleware/         # Custom middleware
+│   ├── models/            # Database models
+│   ├── routes/            # API routes
+│   ├── services/          # Business logic
+│   ├── scripts/           # Utility scripts
+│   └── package.json
+└── package.json            # Root package.json
 ```
 
-## 🌐 Deployment
+## 🔧 Available Scripts
 
-### Local Development
+### Root Level
+
+- `npm run dev` - Start both frontend and backend
+- `npm run build` - Build frontend for production
+- `npm run start` - Start production server
+- `npm run install:all` - Install all dependencies
+- `npm run clean` - Clean all node_modules and build files
+
+### Backend
+
+- `npm run dev` - Start development server with nodemon
+- `npm start` - Start production server
+- `npm run seed` - Seed database with sample data
+
+### Frontend
+
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm run preview` - Preview production build
+
+## 🚀 Deployment
+
+### Production Build
 
 ```bash
-npm run dev          # Polling mode
-npm run dev:webhook  # Webhook mode with nodemon
+# Build frontend
+npm run build
+
+# Start production server
+npm start
 ```
 
-### cPanel Hosting
+### Environment Variables for Production
 
-```bash
-npm run deploy-cpanel    # Automated deployment script
-npm run setup-webhook-cpanel  # Setup webhook
-npm start                     # Start production server
-```
+Update your production environment variables:
 
-See [CPANEL_DEPLOYMENT.md](CPANEL_DEPLOYMENT.md) for detailed cPanel setup instructions.
-
-### Webhook Setup
-
-```bash
-# Setup webhook for your domain
-npm run setup-webhook-cpanel
-
-# Clear webhook (switch back to polling)
-npm run clear-webhook
-```
-
-## 📊 Available Scripts
-
-- `npm start` - Start production server (webhook mode)
-- `npm run dev` - Start development server (polling mode)
-- `npm run test-config` - Test your configuration
-- `npm run setup-db` - Initialize database
-- `npm run setup-webhook-cpanel` - Setup webhook for cPanel
-- `npm run deploy-cpanel` - Automated cPanel deployment
-- `npm run clear-webhook` - Remove webhook
-
-## 🔍 API Endpoints
-
-- `GET /` - Bot status and information
-- `GET /status` - Detailed bot status
-- `GET /health` - Health check
-- `POST /webhook` - Telegram webhook endpoint
-
-## 🛠️ Troubleshooting
-
-### Common Issues
-
-1. **Webhook not working**
-   - Ensure HTTPS is enabled (Telegram requirement)
-   - Check webhook URL is accessible
-   - Verify bot token is correct
-
-2. **Database connection failed**
-   - Check database credentials in .env
-   - Ensure database exists and user has permissions
-   - Try using JSON storage as fallback
-
-3. **Excel upload errors**
-   - Verify file has NAME and ID columns
-   - Check file size limits
-   - Ensure proper Excel format (.xlsx)
-
-4. **Bot not responding**
-   - Check bot token validity
-   - Verify admin user ID is correct
-   - Check server logs for errors
-
-### Debug Commands
-
-```bash
-# Test configuration
-npm run test-config
-
-# Check webhook status
-node -e "
-const TelegramBot = require('node-telegram-bot-api');
-const bot = new TelegramBot('YOUR_BOT_TOKEN');
-bot.getWebHookInfo().then(console.log);
-"
-
-# Test database connection
-npm run setup-db
-```
-
-## 📚 Documentation
-
-- [CPANEL_DEPLOYMENT.md](CPANEL_DEPLOYMENT.md) - Complete cPanel deployment guide
-- [CPANEL_QUICK_SETUP.md](CPANEL_QUICK_SETUP.md) - Quick setup instructions
-- [TROUBLESHOOTING.md](TROUBLESHOOTING.md) - Common issues and solutions
-- [excel-format-guide.md](excel-format-guide.md) - Excel file format guide
+- Set `NODE_ENV=production`
+- Use a secure `JWT_SECRET`
+- Configure production `MONGODB_URI`
+- Set correct `CLIENT_URL`
 
 ## 🤝 Contributing
 
 1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-## 📄 License
+## 📝 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🙏 Acknowledgments
-
-- [node-telegram-bot-api](https://github.com/yagop/node-telegram-bot-api) - Telegram Bot API wrapper
-- [xlsx](https://github.com/SheetJS/sheetjs) - Excel file processing
-- [mysql2](https://github.com/sidorares/node-mysql2) - MySQL client
-- [express](https://expressjs.com/) - Web framework
-
-## 📞 Support
+## 🆘 Support
 
 If you encounter any issues or have questions:
 
-1. Check the [Troubleshooting Guide](TROUBLESHOOTING.md)
-2. Search existing [GitHub Issues](https://github.com/yourusername/telegram-student-results-bot/issues)
-3. Create a new issue with detailed information
+1. Check the [Issues](../../issues) page
+2. Create a new issue with detailed information
+3. Contact support at support@studentresults.edu
+
+## 🎯 Roadmap
+
+- [ ] Advanced analytics and reporting
+- [ ] Email notifications for results
+- [ ] Mobile app development
+- [ ] Integration with learning management systems
+- [ ] Multi-language support
+- [ ] Advanced user roles and permissions
 
 ---
 
-**Made with ❤️ for educational institutions**
+**Made with ❤️ for education**
