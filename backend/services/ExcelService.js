@@ -413,8 +413,83 @@ class ExcelService {
   normalizeColumnName(columnName) {
     if (!columnName) return "";
 
-    const normalized = columnName
-      .toLowerCase()
+    // First, handle specific percentage patterns before general normalization
+    let normalized = columnName.toLowerCase().trim();
+
+    // Handle percentage patterns specifically
+    if (
+      /quiz\s*\(\s*5\s*%?\s*\)/i.test(normalized) ||
+      /quiz\s*5\s*%?/i.test(normalized)
+    ) {
+      return "quiz";
+    }
+    if (
+      /mid\s*\(\s*30\s*%?\s*\)/i.test(normalized) ||
+      /midterm\s*\(\s*30\s*%?\s*\)/i.test(normalized) ||
+      /mid\s*30\s*%?/i.test(normalized) ||
+      /midterm\s*30\s*%?/i.test(normalized)
+    ) {
+      return "midterm";
+    }
+    if (
+      /assignment\s*\(\s*15\s*%?\s*\)/i.test(normalized) ||
+      /assignment\s*15\s*%?/i.test(normalized)
+    ) {
+      return "assignment";
+    }
+    if (
+      /project\s*\(\s*20\s*%?\s*\)/i.test(normalized) ||
+      /project\s*20\s*%?/i.test(normalized)
+    ) {
+      return "project";
+    }
+    if (
+      /final\s*\(\s*50\s*%?\s*\)/i.test(normalized) ||
+      /final\s*50\s*%?/i.test(normalized)
+    ) {
+      return "final";
+    }
+    if (/^quiz$/i.test(normalized)) {
+      return "quiz";
+    }
+    if (/^mid$/i.test(normalized) || /^midterm$/i.test(normalized)) {
+      return "midterm";
+    }
+    if (/^assignment$/i.test(normalized)) {
+      return "assignment";
+    }
+    if (/^project$/i.test(normalized)) {
+      return "project";
+    }
+    if (/^final$/i.test(normalized)) {
+      return "final";
+    }
+    if (/^total$/i.test(normalized)) {
+      return "total";
+    }
+    if (/^grade$/i.test(normalized)) {
+      return "grade";
+    }
+    if (/student\s*name/i.test(normalized) || /full\s*name/i.test(normalized)) {
+      return "fullName";
+    }
+    if (/^name$/i.test(normalized)) {
+      return "fullName";
+    }
+    if (
+      /student\s*id/i.test(normalized) ||
+      /student\s*no/i.test(normalized) ||
+      /registration\s*no/i.test(normalized) ||
+      /reg\s*no/i.test(normalized)
+    ) {
+      return "studentId";
+    }
+    if (/^id$/i.test(normalized)) {
+      return "studentId";
+    }
+
+    // If no percentage pattern matches, use the old normalization
+    normalized = normalized
       .replace(/[^\w\s]/g, "")
       .replace(/\s+/g, "_")
       .trim();

@@ -302,7 +302,10 @@ Student.prototype.calculateGPA = async function () {
     }
   });
 
-  this.gpa = totalCreditHours > 0 ? totalGradePoints / totalCreditHours : 0;
+  this.gpa =
+    totalCreditHours > 0
+      ? parseFloat((totalGradePoints / totalCreditHours).toFixed(2))
+      : 0.0;
   this.totalCreditHours = totalCreditHours;
   this.completedCreditHours = completedCreditHours;
 };
