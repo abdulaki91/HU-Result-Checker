@@ -23,7 +23,7 @@ const Student = sequelize.define(
       allowNull: false,
       unique: true,
       validate: {
-        is: /^[A-Z0-9-/]+$/,
+        is: /^[A-Za-z0-9\-\/\.\s]+$/, // Allow letters, numbers, dashes (single/double), slashes, dots, spaces
       },
     },
     department: {
@@ -302,7 +302,10 @@ Student.prototype.calculateGPA = async function () {
     }
   });
 
-  this.gpa = totalCreditHours > 0 ? totalGradePoints / totalCreditHours : 0;
+  this.gpa =
+    totalCreditHours > 0
+      ? parseFloat((totalGradePoints / totalCreditHours).toFixed(2))
+      : 0.0;
   this.totalCreditHours = totalCreditHours;
   this.completedCreditHours = completedCreditHours;
 };
@@ -333,8 +336,8 @@ Student.prototype.getTranscript = async function () {
       academicYear: this.academicYear,
     },
     academicPerformance: {
-      gpa: this.gpa,
-      cgpa: this.cgpa,
+      gpa: parseFloat(this.gpa) || 0,
+      cgpa: parseFloat(this.cgpa) || 0,
       totalCreditHours: this.totalCreditHours,
       completedCreditHours: this.completedCreditHours,
       status: this.status,
@@ -345,7 +348,7 @@ Student.prototype.getTranscript = async function () {
       courseName: course.courseName,
       creditHours: course.creditHours,
       grade: course.grade,
-      gradePoints: course.gradePoints,
+      gradePoints: parseFloat(course.gradePoints) || 0,
       marks: {
         quiz: course.quizMarks,
         midterm: course.midtermMarks,

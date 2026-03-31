@@ -1,9 +1,12 @@
 # Environment variables
 .env
+.env.*
+!.env.example
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+.env.production
 
 # Dependencies
 node_modules/
@@ -23,7 +26,8 @@ pids
 
 # Coverage directory used by tools like istanbul
 coverage/
-
+.env
+*.env
 # Build outputs
 dist/
 build/

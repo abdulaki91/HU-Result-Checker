@@ -30,8 +30,10 @@ const studentUpdateValidation = [
     .trim(),
   body("studentId")
     .optional()
-    .matches(/^[A-Z0-9-/]+$/)
-    .withMessage("Invalid student ID format"),
+    .matches(/^[A-Za-z0-9\-\/\.\s]+$/)
+    .withMessage(
+      "Invalid student ID format - only letters, numbers, dashes, slashes, dots, and spaces allowed",
+    ),
   body("department")
     .optional()
     .isLength({ min: 2, max: 100 })
@@ -89,7 +91,7 @@ router.get("/students", paginationValidation, getAllStudents);
 // @access  Private/Admin
 router.get(
   "/students/:id",
-  [param("id").isMongoId().withMessage("Invalid student ID")],
+  [param("id").isInt().withMessage("Invalid student ID - must be a number")],
   getStudentDetails,
 );
 
@@ -98,7 +100,7 @@ router.get(
 // @access  Private/Admin
 router.put(
   "/students/:id",
-  [param("id").isMongoId().withMessage("Invalid student ID")],
+  [param("id").isInt().withMessage("Invalid student ID - must be a number")],
   studentUpdateValidation,
   updateStudent,
 );
@@ -108,7 +110,7 @@ router.put(
 // @access  Private/Admin
 router.delete(
   "/students/:id",
-  [param("id").isMongoId().withMessage("Invalid student ID")],
+  [param("id").isInt().withMessage("Invalid student ID - must be a number")],
   deleteStudent,
 );
 
@@ -134,5 +136,50 @@ router.delete(
 // @desc    Upload Excel file and import students
 // @access  Private/Admin
 router.post("/upload", uploadMiddleware, handleUploadError, uploadExcel);
+
+// @route   GET /api/admin/sample-files/:type
+// @desc    Download sample Excel files
+// @access  Private/Admin
+router.get("/sample-files/:type", (req, res) => {
+  const { type } = req.params;
+  const path = require("path");
+
+  let filename;
+  let displayName;
+
+  switch (type) {
+    case "simple":
+      filename = "sample_simple_results.xlsx";
+      displayName = "Simple_Results_Template.xlsx";
+      break;
+    case "complete":
+      filename = "sample_complete_students.xlsx";
+      displayName = "Complete_Students_Template.xlsx";
+      break;
+    default:
+      return res.status(404).json({
+        success: false,
+        message: "Sample file not found",
+      });
+  }
+
+  const filePath = path.join(__dirname, "..", "uploads", filename);
+
+  // Check if file exists
+  const fs = require("fs");
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({
+      success: false,
+      message: "Sample file not found",
+    });
+  }
+
+  res.setHeader("Content-Disposition", `attachment; filename="${displayName}"`);
+  res.setHeader(
+    "Content-Type",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  );
+  res.sendFile(filePath);
+});
 
 module.exports = router;

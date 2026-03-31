@@ -7,6 +7,13 @@
     "dev": "concurrently \"npm run backend:dev\" \"npm run frontend:dev\"",
     "build": "npm run frontend:build",
     "start": "npm run backend:start",
+    "test": "node test-system.js",
+    "test:integration": "node test-integration.js",
+    "test:quick": "node test-integration.js",
+    "test:complete": "node test-complete.js",
+    "test:ui": "node test-ui-simple.js",
+    "test:ui-full": "node test-ui.js",
+    "test:all": "npm run test:complete && npm run test:ui",
     "backend:dev": "cd backend && npm run dev",
     "backend:start": "cd backend && npm start",
     "backend:seed": "cd backend && npm run seed",
@@ -29,5 +36,8 @@
   "devDependencies": {
     "concurrently": "^8.2.2",
     "rimraf": "^5.0.5"
+  },
+  "dependencies": {
+    "form-data": "^4.0.5"
   }
 }

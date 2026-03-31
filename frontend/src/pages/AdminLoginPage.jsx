@@ -29,7 +29,7 @@ const AdminLoginPage = () => {
   // Clear errors when component mounts
   useEffect(() => {
     clearError();
-  }, [clearError]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Show error toast
   useEffect(() => {

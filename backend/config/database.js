@@ -10,7 +10,7 @@ const sequelize = new Sequelize(
     host: process.env.DB_HOST,
     port: process.env.DB_PORT,
     dialect: "mysql",
-    logging: process.env.NODE_ENV === "development" ? console.log : false,
+    logging: false, // Disable all SQL query logging
     dialectOptions: {
       connectTimeout: 30000, // 30 seconds timeout
     },
@@ -31,9 +31,6 @@ const sequelize = new Sequelize(
 // Test the connection - remote MySQL only
 const testConnection = async () => {
   try {
-    console.log(
-      `🔄 Connecting to MySQL at ${process.env.DB_HOST}:${process.env.DB_PORT}...`,
-    );
     await sequelize.authenticate();
     console.log("✅ MySQL connection established successfully");
     return true;

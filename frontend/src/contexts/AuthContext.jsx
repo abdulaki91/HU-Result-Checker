@@ -1,4 +1,10 @@
-import React, { createContext, useContext, useReducer, useEffect } from "react";
+import React, {
+  createContext,
+  useContext,
+  useReducer,
+  useEffect,
+  useCallback,
+} from "react";
 import { authAPI } from "../services/api";
 
 // Auth Context
@@ -106,7 +112,7 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   // Login function
-  const login = async (credentials) => {
+  const login = useCallback(async (credentials) => {
     dispatch({ type: AUTH_ACTIONS.LOGIN_START });
 
     try {
@@ -133,10 +139,10 @@ export const AuthProvider = ({ children }) => {
 
       return { success: false, error: errorMessage };
     }
-  };
+  }, []);
 
   // Logout function
-  const logout = async () => {
+  const logout = useCallback(async () => {
     try {
       await authAPI.logout();
     } catch (error) {
@@ -149,25 +155,28 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem("user");
 
     dispatch({ type: AUTH_ACTIONS.LOGOUT });
-  };
+  }, []);
 
   // Clear error function
-  const clearError = () => {
+  const clearError = useCallback(() => {
     dispatch({ type: AUTH_ACTIONS.CLEAR_ERROR });
-  };
+  }, []);
 
   // Check if user has specific role
-  const hasRole = (role) => {
-    return state.user?.role === role;
-  };
+  const hasRole = useCallback(
+    (role) => {
+      return state.user?.role === role;
+    },
+    [state.user?.role],
+  );
 
   // Check if user is admin
-  const isAdmin = () => {
+  const isAdmin = useCallback(() => {
     return hasRole("admin");
-  };
+  }, [hasRole]);
 
   // Get user initials for avatar
-  const getUserInitials = () => {
+  const getUserInitials = useCallback(() => {
     if (!state.user?.fullName) return "U";
 
     return state.user.fullName
@@ -176,7 +185,7 @@ export const AuthProvider = ({ children }) => {
       .join("")
       .toUpperCase()
       .slice(0, 2);
-  };
+  }, [state.user?.fullName]);
 
   const value = {
     // State
