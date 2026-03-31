@@ -383,6 +383,11 @@ const UploadPage = () => {
                 <li>
                   • Department and Batch will use defaults if not provided
                 </li>
+                <li>
+                  • ✨ <strong>Smart Header Detection:</strong> Files with title
+                  rows (like "HU-ISIMS-RIS - Index") are automatically handled -
+                  the system will find your actual column headers
+                </li>
               </ul>
             </div>
           </div>
