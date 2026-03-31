@@ -1,0 +1,24 @@
+# Disable directory browsing
+Options -Indexes
+
+# Protect node_modules folder
+RewriteEngine On
+RewriteRule ^node_modules/ - [F,L]
+
+# Protect .env file
+<Files ".env">
+    Order allow,deny
+    Deny from all
+</Files>
+
+# Protect package.json
+<Files "package.json">
+    Order allow,deny
+    Deny from all
+</Files>
+
+# Protect any hidden files (like .git, .htaccess itself)
+<FilesMatch "^\.">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
