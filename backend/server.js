@@ -54,9 +54,15 @@ app.use(
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
-// Logging
-if (process.env.NODE_ENV !== "production") {
-  app.use(morgan("dev"));
+// Logging - only in development and only for errors
+if (process.env.NODE_ENV === "development") {
+  app.use(
+    morgan("combined", {
+      skip: function (req, res) {
+        return res.statusCode < 400; // Only log errors (4xx and 5xx)
+      },
+    }),
+  );
 }
 
 // Serve static files

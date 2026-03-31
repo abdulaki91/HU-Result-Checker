@@ -4,13 +4,23 @@ const fs = require("fs");
 
 class ExcelService {
   constructor() {
-    this.requiredColumns = ["fullName", "studentId", "department", "batch"];
+    this.requiredColumns = ["fullName", "studentId"]; // Only name and ID are truly required
     this.optionalColumns = [
+      "department",
+      "batch",
       "semester",
       "academicYear",
       "email",
       "phone",
       "status",
+      // Direct marks columns for single-course format
+      "quiz",
+      "midterm",
+      "assignment",
+      "project",
+      "final",
+      "total",
+      "grade",
     ];
     this.courseColumns = ["courseCode", "courseName", "creditHours", "grade"];
   }
@@ -143,24 +153,25 @@ class ExcelService {
     // Required fields
     student.fullName = this.getColumnValue(row, columnMapping.fullName);
     student.studentId = this.getColumnValue(row, columnMapping.studentId);
-    student.department = this.getColumnValue(row, columnMapping.department);
-    student.batch = this.getColumnValue(row, columnMapping.batch);
 
-    // Validate required fields
-    if (
-      !student.fullName ||
-      !student.studentId ||
-      !student.department ||
-      !student.batch
-    ) {
+    // Department and batch can be optional if we're importing just course results
+    student.department =
+      this.getColumnValue(row, columnMapping.department) || "Other";
+    student.batch =
+      this.getColumnValue(row, columnMapping.batch) ||
+      new Date().getFullYear().toString();
+
+    // Validate required fields (only name and ID are truly required)
+    if (!student.fullName || !student.studentId) {
       throw new Error(
-        "Missing required fields: Full Name, Student ID, Department, and Batch are mandatory",
+        "Missing required fields: Student Name and Student ID are mandatory",
       );
     }
 
     // Clean and validate student ID
-    student.studentId = student.studentId.toString().trim().toUpperCase();
-    if (!/^[A-Z0-9-/]+$/.test(student.studentId)) {
+    student.studentId = student.studentId.toString().trim();
+    // More flexible validation - allow letters, numbers, dashes, slashes, dots, spaces
+    if (!/^[A-Za-z0-9\-\/\.\s]+$/.test(student.studentId)) {
       throw new Error(`Invalid student ID format: ${student.studentId}`);
     }
 
@@ -190,7 +201,7 @@ class ExcelService {
       throw new Error(`Invalid email format: ${student.email}`);
     }
 
-    // Process courses
+    // Process courses - check for both multi-course and single-course formats
     student.courses = this.processCourses(row, columnMapping);
 
     return student;
@@ -199,55 +210,130 @@ class ExcelService {
   processCourses(row, columnMapping) {
     const courses = [];
 
-    // Look for course columns (they might be numbered like course1_code, course1_name, etc.)
-    const coursePattern = /^course(\d+)_(.+)$/;
-    const courseGroups = {};
+    // Check for single-course format (direct marks columns)
+    const hasSingleCourseFormat =
+      columnMapping.quiz !== undefined ||
+      columnMapping.midterm !== undefined ||
+      columnMapping.assignment !== undefined ||
+      columnMapping.project !== undefined ||
+      columnMapping.final !== undefined ||
+      columnMapping.total !== undefined ||
+      columnMapping.grade !== undefined;
 
-    // Group course columns by number
-    Object.keys(columnMapping).forEach((key) => {
-      const match = key.match(coursePattern);
-      if (match) {
-        const courseNum = match[1];
-        const courseField = match[2];
+    if (hasSingleCourseFormat) {
+      // Single course per row format
+      const grade = this.getColumnValue(row, columnMapping.grade);
+      const total = this.getNumericValue(row, columnMapping.total, 0);
 
-        if (!courseGroups[courseNum]) {
-          courseGroups[courseNum] = {};
+      // Only create course if we have either grade or total marks
+      if (grade || total > 0) {
+        // Use sheet name or default as course code
+        const courseCode =
+          this.getColumnValue(row, columnMapping.courseCode) || "COURSE";
+        const courseName =
+          this.getColumnValue(row, columnMapping.courseName) || courseCode;
+
+        // Calculate total if not provided but individual marks are available
+        let calculatedTotal = total;
+        if (!total || total === 0) {
+          const quiz = this.getNumericValue(row, columnMapping.quiz, 0);
+          const midterm = this.getNumericValue(row, columnMapping.midterm, 0);
+          const assignment = this.getNumericValue(
+            row,
+            columnMapping.assignment,
+            0,
+          );
+          const project = this.getNumericValue(row, columnMapping.project, 0);
+          const final = this.getNumericValue(row, columnMapping.final, 0);
+
+          calculatedTotal = quiz + midterm + assignment + project + final;
         }
-        courseGroups[courseNum][courseField] = columnMapping[key];
-      }
-    });
 
-    // Process each course group
-    Object.keys(courseGroups).forEach((courseNum) => {
-      const courseGroup = courseGroups[courseNum];
+        // Calculate grade if not provided
+        let finalGrade = grade;
+        if (!finalGrade && calculatedTotal > 0) {
+          finalGrade = Student.calculateGrade(calculatedTotal);
+        }
 
-      const courseCode = this.getColumnValue(row, courseGroup.code);
-      const courseName = this.getColumnValue(row, courseGroup.name);
-      const creditHours = this.getNumericValue(row, courseGroup.credits, 3);
-      const grade = this.getColumnValue(row, courseGroup.grade);
-
-      // Only add course if we have at least code and grade
-      if (courseCode && grade) {
         const course = {
           courseCode: courseCode.toString().trim().toUpperCase(),
           courseName: courseName || courseCode,
-          creditHours: Math.max(1, Math.min(6, creditHours)), // Ensure 1-6 range
-          grade: grade.toString().trim().toUpperCase(),
+          creditHours: this.getNumericValue(row, columnMapping.creditHours, 3),
+          grade: finalGrade ? finalGrade.toString().trim().toUpperCase() : "F",
           gradePoints: Student.getGradePoints(
-            grade.toString().trim().toUpperCase(),
+            finalGrade ? finalGrade.toString().trim().toUpperCase() : "F",
           ),
-          // Add marks if available
-          quizMarks: this.getNumericValue(row, courseGroup.quiz, 0),
-          midtermMarks: this.getNumericValue(row, courseGroup.midterm, 0),
-          assignmentMarks: this.getNumericValue(row, courseGroup.assignment, 0),
-          projectMarks: this.getNumericValue(row, courseGroup.project, 0),
-          finalMarks: this.getNumericValue(row, courseGroup.final, 0),
-          totalMarks: this.getNumericValue(row, courseGroup.total, 0),
+          // Individual marks
+          quizMarks: this.getNumericValue(row, columnMapping.quiz, 0),
+          midtermMarks: this.getNumericValue(row, columnMapping.midterm, 0),
+          assignmentMarks: this.getNumericValue(
+            row,
+            columnMapping.assignment,
+            0,
+          ),
+          projectMarks: this.getNumericValue(row, columnMapping.project, 0),
+          finalMarks: this.getNumericValue(row, columnMapping.final, 0),
+          totalMarks: calculatedTotal,
         };
 
         courses.push(course);
       }
-    });
+    } else {
+      // Multi-course format (existing logic)
+      // Look for course columns (they might be numbered like course1_code, course1_name, etc.)
+      const coursePattern = /^course(\d+)_(.+)$/;
+      const courseGroups = {};
+
+      // Group course columns by number
+      Object.keys(columnMapping).forEach((key) => {
+        const match = key.match(coursePattern);
+        if (match) {
+          const courseNum = match[1];
+          const courseField = match[2];
+
+          if (!courseGroups[courseNum]) {
+            courseGroups[courseNum] = {};
+          }
+          courseGroups[courseNum][courseField] = columnMapping[key];
+        }
+      });
+
+      // Process each course group
+      Object.keys(courseGroups).forEach((courseNum) => {
+        const courseGroup = courseGroups[courseNum];
+
+        const courseCode = this.getColumnValue(row, courseGroup.code);
+        const courseName = this.getColumnValue(row, courseGroup.name);
+        const creditHours = this.getNumericValue(row, courseGroup.credits, 3);
+        const grade = this.getColumnValue(row, courseGroup.grade);
+
+        // Only add course if we have at least code and grade
+        if (courseCode && grade) {
+          const course = {
+            courseCode: courseCode.toString().trim().toUpperCase(),
+            courseName: courseName || courseCode,
+            creditHours: Math.max(1, Math.min(6, creditHours)), // Ensure 1-6 range
+            grade: grade.toString().trim().toUpperCase(),
+            gradePoints: Student.getGradePoints(
+              grade.toString().trim().toUpperCase(),
+            ),
+            // Add marks if available
+            quizMarks: this.getNumericValue(row, courseGroup.quiz, 0),
+            midtermMarks: this.getNumericValue(row, courseGroup.midterm, 0),
+            assignmentMarks: this.getNumericValue(
+              row,
+              courseGroup.assignment,
+              0,
+            ),
+            projectMarks: this.getNumericValue(row, courseGroup.project, 0),
+            finalMarks: this.getNumericValue(row, courseGroup.final, 0),
+            totalMarks: this.getNumericValue(row, courseGroup.total, 0),
+          };
+
+          courses.push(course);
+        }
+      });
+    }
 
     return courses;
   }
@@ -370,6 +456,30 @@ class ExcelService {
 
       status: "status",
 
+      // Direct marks columns (for single course per row format)
+      quiz: "quiz",
+      quiz_5: "quiz",
+      quiz5: "quiz",
+
+      mid: "midterm",
+      midterm: "midterm",
+      mid_30: "midterm",
+      mid30: "midterm",
+
+      assignment: "assignment",
+      assignment_15: "assignment",
+      assignment15: "assignment",
+
+      project: "project",
+
+      final: "final",
+      final_50: "final",
+      final50: "final",
+
+      total: "total",
+
+      grade: "grade",
+
       // Course patterns (will be handled by regex in processCourses)
       // course1_code, course1_name, course1_credits, course1_grade, etc.
     };
@@ -398,7 +508,7 @@ class ExcelService {
     const missing = [];
 
     this.requiredColumns.forEach((col) => {
-      if (!columnMapping[col]) {
+      if (columnMapping[col] === undefined || columnMapping[col] === null) {
         missing.push(col);
       }
     });

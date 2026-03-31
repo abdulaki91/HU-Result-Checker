@@ -87,7 +87,7 @@ const User = sequelize.define(
 
 // Instance methods
 User.prototype.comparePassword = async function (candidatePassword) {
-  if (this.isLocked) {
+  if (this.isLocked()) {
     throw new Error("Account is temporarily locked");
   }
 
@@ -137,7 +137,7 @@ User.findByCredentials = async function (identifier, password) {
   // Find user by email or username
   const user = await this.findOne({
     where: {
-      [sequelize.Sequelize.Op.or]: [
+      [require("sequelize").Op.or]: [
         { email: identifier.toLowerCase() },
         { username: identifier },
       ],

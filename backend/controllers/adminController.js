@@ -318,7 +318,7 @@ const getStatistics = async (req, res) => {
           WHEN gpa >= 2.5 THEN '2.5-3.0'
           WHEN gpa >= 2.0 THEN '2.0-2.5'
           ELSE 'Below 2.0'
-        END as range,
+        END as gpa_range,
         COUNT(*) as count
       FROM students 
       GROUP BY 
