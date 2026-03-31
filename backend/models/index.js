@@ -1,4 +1,4 @@
-const { sequelize } = require("../config/database");
+const { sequelize, testConnection } = require("../config/database");
 const User = require("./User");
 const { Student, Course } = require("./Student");
 
@@ -11,14 +11,16 @@ const syncDatabase = async (force = false) => {
   try {
     await sequelize.sync({ force });
     console.log("✅ Database synchronized successfully");
+    return true;
   } catch (error) {
-    console.error("❌ Database synchronization failed:", error);
-    throw error;
+    console.error("❌ Database synchronization failed:", error.message);
+    return false;
   }
 };
 
 module.exports = {
   sequelize,
+  testConnection,
   User,
   Student,
   Course,

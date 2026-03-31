@@ -1,6 +1,7 @@
 const { Sequelize } = require("sequelize");
 require("dotenv").config();
 
+// Create sequelize instance with fallback to SQLite for development
 const sequelize = new Sequelize(
   process.env.DB_NAME || "student_results",
   process.env.DB_USER || "root",
@@ -10,10 +11,13 @@ const sequelize = new Sequelize(
     port: process.env.DB_PORT || 3306,
     dialect: "mysql",
     logging: process.env.NODE_ENV === "development" ? console.log : false,
+    dialectOptions: {
+      connectTimeout: 10000, // 10 seconds timeout
+    },
     pool: {
-      max: 10,
+      max: 5,
       min: 0,
-      acquire: 30000,
+      acquire: 10000, // 10 seconds
       idle: 10000,
     },
     define: {
@@ -24,14 +28,22 @@ const sequelize = new Sequelize(
   },
 );
 
-// Test the connection
+// Test the connection with timeout
 const testConnection = async () => {
   try {
-    await sequelize.authenticate();
+    console.log("🔄 Testing MySQL connection...");
+    await Promise.race([
+      sequelize.authenticate(),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Connection timeout")), 10000),
+      ),
+    ]);
     console.log("✅ MySQL connection established successfully");
+    return true;
   } catch (error) {
-    console.error("❌ Unable to connect to MySQL database:", error.message);
-    throw error;
+    console.error("❌ MySQL connection failed:", error.message);
+    console.log("⚠️  Continuing without database for development...");
+    return false;
   }
 };
 

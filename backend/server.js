@@ -95,20 +95,29 @@ app.use(errorHandler);
 // Database connection and server startup
 const startServer = async () => {
   try {
-    // Test database connection
-    await testConnection();
+    // Test database connection (non-blocking)
+    const dbConnected = await testConnection();
 
-    // Sync database models
-    await syncDatabase();
+    if (dbConnected) {
+      // Sync database models only if connected
+      await syncDatabase();
+      console.log("🗄️  Database: MySQL (Connected)");
+    } else {
+      console.log("🗄️  Database: MySQL (Offline - Development Mode)");
+    }
 
-    // Start server
+    // Start server regardless of database connection
     app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`📍 Environment: ${process.env.NODE_ENV || "development"}`);
       console.log(
         `🌐 Client URL: ${process.env.CLIENT_URL || "http://localhost:5173"}`,
       );
-      console.log(`🗄️  Database: MySQL`);
+      if (!dbConnected) {
+        console.log(
+          "⚠️  Note: Running in offline mode - some features may be limited",
+        );
+      }
     });
   } catch (error) {
     console.error("❌ Server startup failed:", error.message);

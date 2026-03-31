@@ -1,59 +1,63 @@
-import React from 'react'
-import { Link } from 'react-router-dom'
-import { motion } from 'framer-motion'
-import { 
-  Search, 
-  GraduationCap, 
-  BookOpen, 
-  Award, 
-  Users, 
+import React from "react";
+import { Link } from "react-router-dom";
+import { motion } from "framer-motion";
+import {
+  Search,
+  GraduationCap,
+  BookOpen,
+  Award,
+  Users,
   TrendingUp,
   CheckCircle,
   ArrowRight,
-  Sparkles
-} from 'lucide-react'
+  Sparkles,
+} from "lucide-react";
 
 const HomePage = () => {
   const features = [
     {
       icon: Search,
-      title: 'Quick Result Check',
-      description: 'Enter your student ID to instantly view your academic results and performance.',
-      color: 'from-blue-500 to-cyan-500'
+      title: "Quick Result Check",
+      description:
+        "Enter your student ID to instantly view your academic results and performance.",
+      color: "from-blue-500 to-cyan-500",
     },
     {
       icon: BookOpen,
-      title: 'Detailed Transcripts',
-      description: 'Access comprehensive course-wise grades, GPA, and academic history.',
-      color: 'from-purple-500 to-pink-500'
+      title: "Detailed Transcripts",
+      description:
+        "Access comprehensive course-wise grades, GPA, and academic history.",
+      color: "from-purple-500 to-pink-500",
     },
     {
       icon: Award,
-      title: 'Performance Analytics',
-      description: 'Track your academic progress with detailed performance insights.',
-      color: 'from-green-500 to-emerald-500'
+      title: "Performance Analytics",
+      description:
+        "Track your academic progress with detailed performance insights.",
+      color: "from-green-500 to-emerald-500",
     },
     {
       icon: Users,
-      title: 'Multi-Department Support',
-      description: 'Supports all departments with batch-wise result management.',
-      color: 'from-orange-500 to-red-500'
-    }
-  ]
+      title: "Multi-Department Support",
+      description:
+        "Supports all departments with batch-wise result management.",
+      color: "from-orange-500 to-red-500",
+    },
+  ];
 
   const stats = [
-    { label: 'Students Served', value: '10,000+', icon: Users },
-    { label: 'Departments', value: '15+', icon: BookOpen },
-    { label: 'Results Processed', value: '50,000+', icon: TrendingUp },
-    { label: 'Success Rate', value: '99.9%', icon: CheckCircle }
-  ]
+    { label: "Students Served", value: "10,000+", icon: Users },
+    { label: "Departments", value: "15+", icon: BookOpen },
+    { label: "Results Processed", value: "50,000+", icon: TrendingUp },
+    { label: "Success Rate", value: "99.9%", icon: CheckCircle },
+  ];
 
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
       <section className="relative overflow-hidden bg-gradient-to-br from-primary-50 via-white to-indigo-50 py-20 sm:py-32">
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"%3E%3Cg fill="none" fill-rule="evenodd"%3E%3Cg fill="%239C92AC" fill-opacity="0.05"%3E%3Ccircle cx="30" cy="30" r="2"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')] opacity-40"></div>
-        
+        <div className="absolute inset-0 bg-gradient-to-br from-gray-50 to-gray-100 opacity-40"></div>
+
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <motion.div
@@ -65,14 +69,15 @@ const HomePage = () => {
               <div className="inline-flex items-center justify-center p-3 bg-gradient-to-r from-primary-500 to-indigo-600 rounded-2xl mb-6 shadow-lg">
                 <GraduationCap className="h-8 w-8 text-white" />
               </div>
-              
+
               <h1 className="text-4xl sm:text-6xl lg:text-7xl font-bold text-gray-900 mb-6">
                 <span className="block">Student Result</span>
                 <span className="gradient-text">Management System</span>
               </h1>
-              
+
               <p className="text-xl sm:text-2xl text-gray-600 max-w-3xl mx-auto mb-8 text-balance">
-                Access your academic results instantly with our modern, secure, and user-friendly platform
+                Access your academic results instantly with our modern, secure,
+                and user-friendly platform
               </p>
             </motion.div>
 
@@ -87,7 +92,7 @@ const HomePage = () => {
                 Check Your Result
                 <ArrowRight className="h-4 w-4 ml-2 group-hover:translate-x-1 transition-transform" />
               </Link>
-              
+
               <Link to="/search" className="btn-secondary btn-lg">
                 <Users className="h-5 w-5 mr-2" />
                 Browse Results
@@ -102,16 +107,18 @@ const HomePage = () => {
               className="grid grid-cols-2 lg:grid-cols-4 gap-6 max-w-4xl mx-auto"
             >
               {stats.map((stat, index) => {
-                const Icon = stat.icon
+                const Icon = stat.icon;
                 return (
                   <div key={stat.label} className="text-center">
                     <div className="inline-flex items-center justify-center p-2 bg-white rounded-xl shadow-sm mb-2">
                       <Icon className="h-5 w-5 text-primary-600" />
                     </div>
-                    <div className="text-2xl font-bold text-gray-900">{stat.value}</div>
+                    <div className="text-2xl font-bold text-gray-900">
+                      {stat.value}
+                    </div>
                     <div className="text-sm text-gray-600">{stat.label}</div>
                   </div>
-                )
+                );
               })}
             </motion.div>
           </div>
@@ -135,14 +142,15 @@ const HomePage = () => {
                 Why Choose Our Platform?
               </h2>
               <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-                Experience the future of academic result management with our cutting-edge features
+                Experience the future of academic result management with our
+                cutting-edge features
               </p>
             </motion.div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             {features.map((feature, index) => {
-              const Icon = feature.icon
+              const Icon = feature.icon;
               return (
                 <motion.div
                   key={feature.title}
@@ -153,20 +161,22 @@ const HomePage = () => {
                   className="card card-hover group"
                 >
                   <div className="card-content text-center">
-                    <div className={`inline-flex items-center justify-center p-3 bg-gradient-to-r ${feature.color} rounded-2xl mb-4 shadow-lg group-hover:scale-110 transition-transform duration-300`}>
+                    <div
+                      className={`inline-flex items-center justify-center p-3 bg-gradient-to-r ${feature.color} rounded-2xl mb-4 shadow-lg group-hover:scale-110 transition-transform duration-300`}
+                    >
                       <Icon className="h-6 w-6 text-white" />
                     </div>
-                    
+
                     <h3 className="text-xl font-semibold text-gray-900 mb-3">
                       {feature.title}
                     </h3>
-                    
+
                     <p className="text-gray-600 text-sm leading-relaxed">
                       {feature.description}
                     </p>
                   </div>
                 </motion.div>
-              )
+              );
             })}
           </div>
         </div>
@@ -186,16 +196,23 @@ const HomePage = () => {
               Ready to Check Your Results?
             </h2>
             <p className="text-xl text-white/90 mb-8 max-w-2xl mx-auto">
-              Join thousands of students who trust our platform for their academic result management
+              Join thousands of students who trust our platform for their
+              academic result management
             </p>
-            
+
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link to="/check-result" className="btn bg-white text-primary-600 hover:bg-gray-50 btn-lg font-semibold">
+              <Link
+                to="/check-result"
+                className="btn bg-white text-primary-600 hover:bg-gray-50 btn-lg font-semibold"
+              >
                 <Search className="h-5 w-5 mr-2" />
                 Check Results Now
               </Link>
-              
-              <Link to="/search" className="btn border-2 border-white text-white hover:bg-white hover:text-primary-600 btn-lg">
+
+              <Link
+                to="/search"
+                className="btn border-2 border-white text-white hover:bg-white hover:text-primary-600 btn-lg"
+              >
                 <BookOpen className="h-5 w-5 mr-2" />
                 Browse All Results
               </Link>
@@ -226,20 +243,23 @@ const HomePage = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
               {
-                step: '01',
-                title: 'Enter Student ID',
-                description: 'Input your unique student identification number in the search field'
+                step: "01",
+                title: "Enter Student ID",
+                description:
+                  "Input your unique student identification number in the search field",
               },
               {
-                step: '02',
-                title: 'Verify Information',
-                description: 'System validates your ID and retrieves your academic records securely'
+                step: "02",
+                title: "Verify Information",
+                description:
+                  "System validates your ID and retrieves your academic records securely",
               },
               {
-                step: '03',
-                title: 'View Results',
-                description: 'Access your complete results with grades, GPA, and performance analytics'
-              }
+                step: "03",
+                title: "View Results",
+                description:
+                  "Access your complete results with grades, GPA, and performance analytics",
+              },
             ].map((step, index) => (
               <motion.div
                 key={step.step}
@@ -255,16 +275,14 @@ const HomePage = () => {
                 <h3 className="text-xl font-semibold text-gray-900 mb-3">
                   {step.title}
                 </h3>
-                <p className="text-gray-600">
-                  {step.description}
-                </p>
+                <p className="text-gray-600">{step.description}</p>
               </motion.div>
             ))}
           </div>
         </div>
       </section>
     </div>
-  )
-}
+  );
+};
 
-export default HomePage
+export default HomePage;

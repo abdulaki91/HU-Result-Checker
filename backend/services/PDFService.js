@@ -19,17 +19,38 @@ class PDFService {
 
       let yPosition = this.pageHeight - this.margin;
 
+      // Get transcript data
+      const transcript = await student.getTranscript();
+
       // Header
       yPosition = this.drawHeader(page, boldFont, regularFont, yPosition);
 
       // Student Information
-      yPosition = this.drawStudentInfo(page, boldFont, regularFont, student, yPosition);
+      yPosition = this.drawStudentInfo(
+        page,
+        boldFont,
+        regularFont,
+        transcript.studentInfo,
+        yPosition,
+      );
 
       // Academic Performance Summary
-      yPosition = this.drawAcademicSummary(page, boldFont, regularFont, student, yPosition);
+      yPosition = this.drawAcademicSummary(
+        page,
+        boldFont,
+        regularFont,
+        transcript.academicPerformance,
+        yPosition,
+      );
 
       // Course Details
-      yPosition = this.drawCourseDetails(page, boldFont, regularFont, student, yPosition);
+      yPosition = this.drawCourseDetails(
+        page,
+        boldFont,
+        regularFont,
+        transcript.courses,
+        yPosition,
+      );
 
       // Footer
       this.drawFooter(page, regularFont);
@@ -75,7 +96,7 @@ class PDFService {
     return yPosition - 30;
   }
 
-  drawStudentInfo(page, boldFont, regularFont, student, yPosition) {
+  drawStudentInfo(page, boldFont, regularFont, studentInfo, yPosition) {
     // Section title
     page.drawText("STUDENT INFORMATION", {
       x: this.margin,
@@ -87,19 +108,18 @@ class PDFService {
 
     yPosition -= 25;
 
-    const studentInfo = [
-      { label: "Full Name:", value: student.fullName },
-      { label: "Student ID:", value: student.studentId },
-      { label: "Department:", value: student.department },
-      { label: "Batch:", value: student.batch },
-      { label: "Semester:", value: student.semester },
-      { label: "Academic Year:", value: student.academicYear },
-      { label: "Status:", value: student.status },
+    const studentData = [
+      { label: "Full Name:", value: studentInfo.fullName },
+      { label: "Student ID:", value: studentInfo.studentId },
+      { label: "Department:", value: studentInfo.department },
+      { label: "Batch:", value: studentInfo.batch },
+      { label: "Semester:", value: studentInfo.semester },
+      { label: "Academic Year:", value: studentInfo.academicYear },
     ];
 
     // Draw in two columns
-    const leftColumn = studentInfo.slice(0, 4);
-    const rightColumn = studentInfo.slice(4);
+    const leftColumn = studentData.slice(0, 3);
+    const rightColumn = studentData.slice(3);
 
     // Left column
     let tempY = yPosition;
@@ -148,7 +168,13 @@ class PDFService {
     return Math.min(tempY, yPosition - leftColumn.length * 18) - 20;
   }
 
-  drawAcademicSummary(page, boldFont, regularFont, student, yPosition) {
+  drawAcademicSummary(
+    page,
+    boldFont,
+    regularFont,
+    academicPerformance,
+    yPosition,
+  ) {
     // Section title
     page.drawText("ACADEMIC PERFORMANCE SUMMARY", {
       x: this.margin,
@@ -161,11 +187,17 @@ class PDFService {
     yPosition -= 25;
 
     const summaryInfo = [
-      { label: "GPA:", value: student.gpa.toFixed(2) },
-      { label: "CGPA:", value: student.cgpa.toFixed(2) },
-      { label: "Total Credit Hours:", value: student.totalCreditHours.toString() },
-      { label: "Completed Credit Hours:", value: student.completedCreditHours.toString() },
-      { label: "Grade Status:", value: student.gradeStatus },
+      { label: "GPA:", value: academicPerformance.gpa.toFixed(2) },
+      { label: "CGPA:", value: academicPerformance.cgpa.toFixed(2) },
+      {
+        label: "Total Credit Hours:",
+        value: academicPerformance.totalCreditHours.toString(),
+      },
+      {
+        label: "Completed Credit Hours:",
+        value: academicPerformance.completedCreditHours.toString(),
+      },
+      { label: "Grade Status:", value: academicPerformance.gradeStatus },
     ];
 
     summaryInfo.forEach((info) => {
@@ -191,8 +223,8 @@ class PDFService {
     return yPosition - 20;
   }
 
-  drawCourseDetails(page, boldFont, regularFont, student, yPosition) {
-    if (!student.courses || student.courses.length === 0) {
+  drawCourseDetails(page, boldFont, regularFont, courses, yPosition) {
+    if (!courses || courses.length === 0) {
       return yPosition;
     }
 
@@ -208,7 +240,13 @@ class PDFService {
     yPosition -= 25;
 
     // Table headers
-    const headers = ["Course Code", "Course Name", "Credit Hours", "Grade", "Grade Points"];
+    const headers = [
+      "Course Code",
+      "Course Name",
+      "Credit Hours",
+      "Grade",
+      "Grade Points",
+    ];
     const columnWidths = [80, 200, 80, 60, 80];
     let xPosition = this.margin;
 
@@ -236,7 +274,7 @@ class PDFService {
     yPosition -= 25;
 
     // Draw courses
-    student.courses.forEach((course, index) => {
+    courses.forEach((course, index) => {
       // Alternate row background
       if (index % 2 === 0) {
         page.drawRectangle({
@@ -252,8 +290,8 @@ class PDFService {
 
       const courseData = [
         course.courseCode,
-        course.courseName.length > 25 
-          ? course.courseName.substring(0, 25) + "..." 
+        course.courseName.length > 25
+          ? course.courseName.substring(0, 25) + "..."
           : course.courseName,
         course.creditHours.toString(),
         course.grade,
@@ -276,7 +314,7 @@ class PDFService {
       // Check if we need a new page
       if (yPosition < 100) {
         // Add new page logic here if needed
-        break;
+        return yPosition - 20;
       }
     });
 
@@ -297,7 +335,8 @@ class PDFService {
     });
 
     // Disclaimer
-    const disclaimer = "This is a computer-generated document. No signature is required.";
+    const disclaimer =
+      "This is a computer-generated document. No signature is required.";
     page.drawText(disclaimer, {
       x: this.pageWidth - this.margin - 250,
       y: footerY,
