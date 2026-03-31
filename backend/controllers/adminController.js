@@ -110,27 +110,50 @@ const getStudentDetails = async (req, res) => {
 // Upload Excel file and import students
 const uploadExcel = async (req, res) => {
   try {
+    console.log(`\n🚀 Excel upload started`);
+    console.log(`👤 User: ${req.user.id} (${req.user.username})`);
+    console.log(`📅 Time: ${new Date().toISOString()}`);
+
     if (!req.file) {
+      console.error(`❌ No file uploaded`);
       return res.status(400).json({
         success: false,
         message: "No file uploaded",
       });
     }
 
+    console.log(`📁 File details:`);
+    console.log(`   - Original name: ${req.file.originalname}`);
+    console.log(`   - Size: ${req.file.size} bytes`);
+    console.log(`   - Path: ${req.file.path}`);
+    console.log(`   - Mimetype: ${req.file.mimetype}`);
+
     const excelService = new ExcelService();
 
     // Parse Excel file
+    console.log(`🔄 Starting Excel parsing...`);
     const result = await excelService.parseAndImportStudents(
       req.file.path,
       req.user.id,
+    );
+
+    console.log(`✅ Excel processing completed successfully`);
+    console.log(`📊 Final results:`);
+    console.log(`   - Total processed: ${result.totalProcessed}`);
+    console.log(`   - Total errors: ${result.totalErrors}`);
+    console.log(
+      `   - Success rate: ${result.totalProcessed > 0 ? ((result.totalProcessed / (result.totalProcessed + result.totalErrors)) * 100).toFixed(1) : 0}%`,
     );
 
     // Clean up uploaded file
     const fs = require("fs").promises;
     try {
       await fs.unlink(req.file.path);
+      console.log(`🗑️ Temporary file cleaned up: ${req.file.path}`);
     } catch (cleanupError) {
-      console.warn("Failed to cleanup uploaded file:", cleanupError.message);
+      console.warn(
+        `⚠️ Failed to cleanup uploaded file: ${cleanupError.message}`,
+      );
     }
 
     res.json({
@@ -139,15 +162,20 @@ const uploadExcel = async (req, res) => {
       data: result,
     });
   } catch (error) {
-    console.error("Upload Excel error:", error);
+    console.error(`💥 Excel upload failed:`, error.message);
+    console.error(`📍 Stack trace:`, error.stack);
+    console.error(`🕐 Time: ${new Date().toISOString()}`);
 
     // Clean up file on error
     if (req.file) {
       const fs = require("fs").promises;
       try {
         await fs.unlink(req.file.path);
+        console.log(`🗑️ Cleaned up file after error: ${req.file.path}`);
       } catch (cleanupError) {
-        console.warn("Failed to cleanup uploaded file:", cleanupError.message);
+        console.warn(
+          `⚠️ Failed to cleanup uploaded file after error: ${cleanupError.message}`,
+        );
       }
     }
 
