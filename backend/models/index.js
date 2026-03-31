@@ -11,10 +11,9 @@ const syncDatabase = async (force = false) => {
   try {
     await sequelize.sync({ force });
     console.log("✅ Database synchronized successfully");
-    return true;
   } catch (error) {
     console.error("❌ Database synchronization failed:", error.message);
-    return false;
+    throw error;
   }
 };
 
