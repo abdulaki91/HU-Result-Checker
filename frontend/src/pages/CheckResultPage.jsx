@@ -32,6 +32,10 @@ const CheckResultPage = () => {
     setIsLoading(true);
     try {
       const response = await studentAPI.getById(studentId.trim());
+      console.log("🔍 API Response:", response.data);
+      console.log("📊 Column Settings received:", response.data.columnSettings);
+      console.log("👁️ Visible Columns:", response.data.visibleColumns);
+
       setStudent(response.data.data);
       setColumnSettings(response.data.columnSettings || []);
       toast.success("Student result found!");
@@ -94,6 +98,11 @@ const CheckResultPage = () => {
 
   // Helper function to check if a column should be visible
   const isColumnVisible = (columnKey) => {
+    console.log(`🔍 Checking visibility for ${columnKey}:`, {
+      columnSettings: columnSettings.length,
+      hasSettings: columnSettings.length > 0,
+    });
+
     if (!columnSettings || columnSettings.length === 0) {
       // If no settings loaded, show default columns
       const defaultVisible = [
@@ -105,11 +114,19 @@ const CheckResultPage = () => {
         "academicYear",
         "gpa",
       ];
-      return defaultVisible.includes(columnKey);
+      const isVisible = defaultVisible.includes(columnKey);
+      console.log(`📋 Using default for ${columnKey}: ${isVisible}`);
+      return isVisible;
     }
 
     const setting = columnSettings.find((col) => col.columnKey === columnKey);
-    return setting ? setting.isVisible : false;
+    const isVisible = setting ? setting.isVisible : false;
+    console.log(
+      `⚙️ Setting for ${columnKey}:`,
+      setting,
+      `visible: ${isVisible}`,
+    );
+    return isVisible;
   };
 
   // Helper function to check if course columns should be visible
