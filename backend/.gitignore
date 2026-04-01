@@ -22,6 +22,8 @@ yarn-error.log*
 pids
 *.pid
 *.seed
+*.env
+
 *.pid.lock
 
 # Coverage directory used by tools like istanbul
