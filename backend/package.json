@@ -2,9 +2,9 @@
   "name": "student-result-backend",
   "version": "1.0.0",
   "description": "Backend API for Student Result System",
-  "main": "server.js",
+  "main": "index.js",
   "scripts": {
-    "dev": "nodemon server.js",
+    "dev": "nodemon index.js",
     "start": "node index.js",
     "seed": "node scripts/seedData.js",
     "deploy:prep": "node ../deploy-cpanel.js",
