@@ -1,8 +1,91 @@
 const { Student, Course } = require("../models/Student");
+const { ColumnSetting } = require("../models");
 const ExcelService = require("../services/ExcelService");
 const PDFService = require("../services/PDFService");
 const { validationResult } = require("express-validator");
 const { Op } = require("sequelize");
+
+// Helper function to get visible columns for student data
+const getVisibleColumns = async () => {
+  try {
+    const visibleColumns = await ColumnSetting.findAll({
+      where: { isVisible: true },
+      order: [["displayOrder", "ASC"]],
+    });
+
+    // Map to column keys that exist in Student model
+    const studentColumns = visibleColumns
+      .map((col) => col.columnKey)
+      .filter((key) =>
+        [
+          "id",
+          "fullName",
+          "studentId",
+          "department",
+          "batch",
+          "semester",
+          "academicYear",
+          "email",
+          "phone",
+          "status",
+          "gpa",
+          "createdAt",
+          "updatedAt",
+        ].includes(key),
+      );
+
+    // Always include 'id' field as it's required for database operations
+    if (!studentColumns.includes("id")) {
+      studentColumns.unshift("id");
+    }
+
+    return {
+      columns: studentColumns,
+      settings: visibleColumns,
+    };
+  } catch (error) {
+    console.error("Error fetching visible columns:", error);
+    // Fallback to default columns
+    return {
+      columns: [
+        "id",
+        "fullName",
+        "studentId",
+        "department",
+        "batch",
+        "gpa",
+        "status",
+      ],
+      settings: [],
+    };
+  }
+};
+
+// Helper function to get visible course columns
+const getVisibleCourseColumns = async () => {
+  try {
+    const visibleColumns = await ColumnSetting.findAll({
+      where: {
+        isVisible: true,
+        columnType: ["marks", "calculated"],
+      },
+      order: [["displayOrder", "ASC"]],
+    });
+
+    return visibleColumns.map((col) => col.columnKey);
+  } catch (error) {
+    console.error("Error fetching visible course columns:", error);
+    return [
+      "quiz",
+      "midterm",
+      "assignment",
+      "project",
+      "final",
+      "total",
+      "grade",
+    ];
+  }
+};
 
 // Get student by ID (public endpoint)
 const getStudentById = async (req, res) => {
@@ -18,6 +101,12 @@ const getStudentById = async (req, res) => {
 
     let student;
     const searchId = studentId.trim();
+
+    // Get visible course columns from settings
+    const visibleCourseColumns = await getVisibleCourseColumns();
+    // Get visible student info columns from settings
+    const { columns: visibleStudentColumns, settings: columnSettings } =
+      await getVisibleColumns();
 
     // First try exact match
     student = await Student.findOne({
@@ -119,9 +208,30 @@ const getStudentById = async (req, res) => {
 
     const transcript = await student.getTranscript();
 
+    // Filter course data based on visible columns
+    if (transcript.courses && transcript.courses.length > 0) {
+      transcript.courses = transcript.courses.map((course) => {
+        const filteredCourse = { ...course };
+
+        // Keep only visible course columns
+        Object.keys(filteredCourse).forEach((key) => {
+          if (
+            !["courseCode", "courseName", "credits"].includes(key) &&
+            !visibleCourseColumns.includes(key)
+          ) {
+            delete filteredCourse[key];
+          }
+        });
+
+        return filteredCourse;
+      });
+    }
+
     res.json({
       success: true,
       data: transcript,
+      visibleColumns: visibleCourseColumns, // Include visible columns info for frontend
+      columnSettings: columnSettings, // Include all column settings for frontend
     });
   } catch (error) {
     console.error("Get student error:", error);
@@ -146,6 +256,10 @@ const searchStudents = async (req, res) => {
     }
 
     const searchTerm = q.trim();
+
+    // Get visible columns from settings
+    const { columns: visibleColumns } = await getVisibleColumns();
+
     let whereClause = {
       [Op.or]: [
         { fullName: { [Op.like]: `%${searchTerm}%` } },
@@ -157,10 +271,13 @@ const searchStudents = async (req, res) => {
     if (/^\d+$/.test(searchTerm)) {
       const { sequelize } = require("../models");
 
+      // Build dynamic SELECT clause based on visible columns
+      const selectColumns = visibleColumns.join(", ");
+
       // For numeric searches, we'll do a separate query and combine results
       const numericResults = await sequelize.query(
         `
-        SELECT id, fullName, studentId, department, batch, gpa, status 
+        SELECT ${selectColumns}
         FROM students 
         WHERE REPLACE(REPLACE(REPLACE(REPLACE(studentId, '-', ''), '/', ''), '.', ''), ' ', '') LIKE '%${searchTerm}%'
         ${department ? `AND department = '${department}'` : ""}
@@ -182,15 +299,7 @@ const searchStudents = async (req, res) => {
 
       const regularResults = await Student.findAll({
         where: whereClause,
-        attributes: [
-          "id",
-          "fullName",
-          "studentId",
-          "department",
-          "batch",
-          "gpa",
-          "status",
-        ],
+        attributes: visibleColumns,
         limit: 10,
         order: [["fullName", "ASC"]],
       });
@@ -227,15 +336,7 @@ const searchStudents = async (req, res) => {
 
     const students = await Student.findAll({
       where: whereClause,
-      attributes: [
-        "id",
-        "fullName",
-        "studentId",
-        "department",
-        "batch",
-        "gpa",
-        "status",
-      ],
+      attributes: visibleColumns,
       limit: 20,
       order: [["fullName", "ASC"]],
     });

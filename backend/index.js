@@ -15,6 +15,7 @@ const authRoutes = require("./routes/authRoutes");
 const studentRoutes = require("./routes/studentRoutes");
 const adminRoutes = require("./routes/adminRoutes");
 const resultRoutes = require("./routes/resultRoutes");
+const columnSettingsRoutes = require("./routes/columnSettingsRoutes");
 
 // Import middleware
 const { errorHandler, notFound } = require("./middleware/errorMiddleware");
@@ -84,6 +85,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/students", studentRoutes);
 app.use("/api/admin", authenticateToken, adminRoutes);
 app.use("/api/results", resultRoutes);
+app.use("/api/column-settings", columnSettingsRoutes);
 
 // Serve React app in production
 if (process.env.NODE_ENV === "production") {

@@ -132,6 +132,24 @@ export const adminAPI = {
   getStatistics: () => api.get("/admin/statistics"),
 };
 
+// Column Settings API (Protected)
+export const columnSettingsAPI = {
+  // Get all column settings
+  getAll: () => api.get("/column-settings"),
+
+  // Get visible columns only
+  getVisible: () => api.get("/column-settings/visible"),
+
+  // Update column settings in bulk
+  updateBulk: (columns) => api.put("/column-settings/bulk", { columns }),
+
+  // Update single column setting
+  updateSingle: (id, data) => api.put(`/column-settings/${id}`, data),
+
+  // Reset to default settings
+  reset: () => api.post("/column-settings/reset"),
+};
+
 // Results API (Public)
 export const resultAPI = {
   // Get result by student ID

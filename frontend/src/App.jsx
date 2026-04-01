@@ -15,6 +15,7 @@ import AdminDashboard from "./pages/admin/AdminDashboard";
 import StudentsPage from "./pages/admin/StudentsPage";
 import UploadPage from "./pages/admin/UploadPage";
 import StatisticsPage from "./pages/admin/StatisticsPage";
+import ColumnSettingsPage from "./pages/admin/ColumnSettingsPage";
 
 // Protected Route Component
 import ProtectedRoute from "./components/auth/ProtectedRoute";
@@ -76,6 +77,14 @@ function App() {
                   element={
                     <ProtectedRoute>
                       <StatisticsPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/admin/column-settings"
+                  element={
+                    <ProtectedRoute>
+                      <ColumnSettingsPage />
                     </ProtectedRoute>
                   }
                 />

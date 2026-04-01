@@ -37,6 +37,7 @@ const Navbar = () => {
     { to: "/admin/students", label: "Students", icon: User },
     { to: "/admin/upload", label: "Upload", icon: Settings },
     { to: "/admin/statistics", label: "Statistics", icon: BarChart3 },
+    { to: "/admin/column-settings", label: "Column Settings", icon: Settings },
   ];
 
   const isActive = (path) => {

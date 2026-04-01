@@ -17,6 +17,7 @@ import toast from "react-hot-toast";
 const CheckResultPage = () => {
   const [studentId, setStudentId] = useState("");
   const [student, setStudent] = useState(null);
+  const [columnSettings, setColumnSettings] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
 
@@ -32,11 +33,13 @@ const CheckResultPage = () => {
     try {
       const response = await studentAPI.getById(studentId.trim());
       setStudent(response.data.data);
+      setColumnSettings(response.data.columnSettings || []);
       toast.success("Student result found!");
     } catch (error) {
       const errorMessage = handleApiError(error);
       toast.error(errorMessage);
       setStudent(null);
+      setColumnSettings([]);
     } finally {
       setIsLoading(false);
     }
@@ -87,6 +90,74 @@ const CheckResultPage = () => {
     if (gpa >= 2.5) return "text-yellow-600";
     if (gpa >= 2.0) return "text-orange-600";
     return "text-red-600";
+  };
+
+  // Helper function to check if a column should be visible
+  const isColumnVisible = (columnKey) => {
+    if (!columnSettings || columnSettings.length === 0) {
+      // If no settings loaded, show default columns
+      const defaultVisible = [
+        "fullName",
+        "studentId",
+        "department",
+        "batch",
+        "semester",
+        "academicYear",
+        "gpa",
+      ];
+      return defaultVisible.includes(columnKey);
+    }
+
+    const setting = columnSettings.find((col) => col.columnKey === columnKey);
+    return setting ? setting.isVisible : false;
+  };
+
+  // Helper function to check if course columns should be visible
+  const isCourseColumnVisible = (columnKey) => {
+    if (!columnSettings || columnSettings.length === 0) {
+      // If no settings loaded, show default course columns
+      const defaultVisible = [
+        "quiz",
+        "midterm",
+        "assignment",
+        "project",
+        "final",
+        "total",
+        "grade",
+      ];
+      return defaultVisible.includes(columnKey);
+    }
+
+    const setting = columnSettings.find((col) => col.columnKey === columnKey);
+    return setting ? setting.isVisible : false;
+  };
+
+  // Get column display name
+  const getColumnDisplayName = (columnKey) => {
+    if (!columnSettings || columnSettings.length === 0) {
+      // Default display names
+      const defaultNames = {
+        fullName: "Full Name",
+        studentId: "Student ID",
+        department: "Department",
+        batch: "Batch",
+        semester: "Semester",
+        academicYear: "Academic Year",
+        gpa: "Current GPA",
+        cgpa: "CGPA",
+        quiz: "Quiz",
+        midterm: "Midterm",
+        assignment: "Assignment",
+        project: "Project",
+        final: "Final",
+        total: "Total",
+        grade: "Grade",
+      };
+      return defaultNames[columnKey] || columnKey;
+    }
+
+    const setting = columnSettings.find((col) => col.columnKey === columnKey);
+    return setting ? setting.columnName : columnKey;
   };
 
   return (
@@ -177,75 +248,146 @@ const CheckResultPage = () => {
                     <User className="h-5 w-5 mr-2" />
                     Student Information
                   </h2>
-                  <button
-                    onClick={handleDownloadPDF}
-                    disabled={isDownloading}
-                    className="btn-secondary"
-                  >
-                    {isDownloading ? (
-                      <LoadingSpinner size="sm" text="" />
-                    ) : (
-                      <>
-                        <Download className="h-4 w-4 mr-2" />
-                        Download PDF
-                      </>
+                  <div className="flex items-center space-x-4">
+                    {columnSettings.length > 0 && (
+                      <div className="text-xs text-gray-500">
+                        Showing{" "}
+                        {
+                          columnSettings.filter(
+                            (col) =>
+                              col.isVisible &&
+                              [
+                                "fullName",
+                                "studentId",
+                                "department",
+                                "batch",
+                                "semester",
+                                "academicYear",
+                                "email",
+                                "phone",
+                              ].includes(col.columnKey),
+                          ).length
+                        }{" "}
+                        of{" "}
+                        {
+                          columnSettings.filter((col) =>
+                            [
+                              "fullName",
+                              "studentId",
+                              "department",
+                              "batch",
+                              "semester",
+                              "academicYear",
+                              "email",
+                              "phone",
+                            ].includes(col.columnKey),
+                          ).length
+                        }{" "}
+                        fields
+                      </div>
                     )}
-                  </button>
+                    <button
+                      onClick={handleDownloadPDF}
+                      disabled={isDownloading}
+                      className="btn-secondary"
+                    >
+                      {isDownloading ? (
+                        <LoadingSpinner size="sm" text="" />
+                      ) : (
+                        <>
+                          <Download className="h-4 w-4 mr-2" />
+                          Download PDF
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-4">
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">
-                        Full Name
-                      </label>
-                      <p className="text-lg font-semibold text-gray-900">
-                        {student.studentInfo.fullName}
-                      </p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">
-                        Student ID
-                      </label>
-                      <p className="text-lg font-semibold text-gray-900">
-                        {student.studentInfo.studentId}
-                      </p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">
-                        Department
-                      </label>
-                      <p className="text-lg text-gray-900">
-                        {student.studentInfo.department}
-                      </p>
-                    </div>
+                    {isColumnVisible("fullName") && (
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">
+                          {getColumnDisplayName("fullName")}
+                        </label>
+                        <p className="text-lg font-semibold text-gray-900">
+                          {student.studentInfo.fullName}
+                        </p>
+                      </div>
+                    )}
+                    {isColumnVisible("studentId") && (
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">
+                          {getColumnDisplayName("studentId")}
+                        </label>
+                        <p className="text-lg font-semibold text-gray-900">
+                          {student.studentInfo.studentId}
+                        </p>
+                      </div>
+                    )}
+                    {isColumnVisible("department") && (
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">
+                          {getColumnDisplayName("department")}
+                        </label>
+                        <p className="text-lg text-gray-900">
+                          {student.studentInfo.department}
+                        </p>
+                      </div>
+                    )}
+                    {isColumnVisible("email") && student.studentInfo.email && (
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">
+                          {getColumnDisplayName("email")}
+                        </label>
+                        <p className="text-lg text-gray-900">
+                          {student.studentInfo.email}
+                        </p>
+                      </div>
+                    )}
                   </div>
 
                   <div className="space-y-4">
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">
-                        Batch
-                      </label>
-                      <p className="text-lg text-gray-900">
-                        {student.studentInfo.batch}
-                      </p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">
-                        Semester
-                      </label>
-                      <p className="text-lg text-gray-900">
-                        {student.studentInfo.semester}
-                      </p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">
-                        Academic Year
-                      </label>
-                      <p className="text-lg text-gray-900">
-                        {student.studentInfo.academicYear}
-                      </p>
-                    </div>
+                    {isColumnVisible("batch") && (
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">
+                          {getColumnDisplayName("batch")}
+                        </label>
+                        <p className="text-lg text-gray-900">
+                          {student.studentInfo.batch}
+                        </p>
+                      </div>
+                    )}
+                    {isColumnVisible("semester") && (
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">
+                          {getColumnDisplayName("semester")}
+                        </label>
+                        <p className="text-lg text-gray-900">
+                          {student.studentInfo.semester}
+                        </p>
+                      </div>
+                    )}
+                    {isColumnVisible("academicYear") && (
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">
+                          {getColumnDisplayName("academicYear")}
+                        </label>
+                        <p className="text-lg text-gray-900">
+                          {student.studentInfo.academicYear}
+                        </p>
+                      </div>
+                    )}
+                    {isColumnVisible("phone") && student.studentInfo.phone && (
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">
+                          {getColumnDisplayName("phone")}
+                        </label>
+                        <p className="text-lg text-gray-900">
+                          {student.studentInfo.phone}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -260,27 +402,35 @@ const CheckResultPage = () => {
                 </h2>
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                  <div className="text-center">
-                    <div
-                      className={`text-3xl font-bold mb-1 ${getGPAColor(parseFloat(student.academicPerformance.gpa) || 0)}`}
-                    >
-                      {(
-                        parseFloat(student.academicPerformance.gpa) || 0
-                      ).toFixed(2)}
+                  {isColumnVisible("gpa") && (
+                    <div className="text-center">
+                      <div
+                        className={`text-3xl font-bold mb-1 ${getGPAColor(parseFloat(student.academicPerformance.gpa) || 0)}`}
+                      >
+                        {(
+                          parseFloat(student.academicPerformance.gpa) || 0
+                        ).toFixed(2)}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {getColumnDisplayName("gpa")}
+                      </div>
                     </div>
-                    <div className="text-sm text-gray-500">Current GPA</div>
-                  </div>
+                  )}
 
-                  <div className="text-center">
-                    <div
-                      className={`text-3xl font-bold mb-1 ${getGPAColor(parseFloat(student.academicPerformance.cgpa) || 0)}`}
-                    >
-                      {(
-                        parseFloat(student.academicPerformance.cgpa) || 0
-                      ).toFixed(2)}
+                  {isColumnVisible("gpa") && (
+                    <div className="text-center">
+                      <div
+                        className={`text-3xl font-bold mb-1 ${getGPAColor(parseFloat(student.academicPerformance.cgpa) || 0)}`}
+                      >
+                        {(
+                          parseFloat(student.academicPerformance.cgpa) || 0
+                        ).toFixed(2)}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {getColumnDisplayName("cgpa") || "CGPA"}
+                      </div>
                     </div>
-                    <div className="text-sm text-gray-500">CGPA</div>
-                  </div>
+                  )}
 
                   <div className="text-center">
                     <div className="text-3xl font-bold text-gray-900 mb-1">
@@ -330,10 +480,47 @@ const CheckResultPage = () => {
             {student.courses && student.courses.length > 0 && (
               <div className="card">
                 <div className="card-content">
-                  <h2 className="text-xl font-semibold text-gray-900 mb-6 flex items-center">
-                    <BookOpen className="h-5 w-5 mr-2" />
-                    Course Details
-                  </h2>
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-xl font-semibold text-gray-900 flex items-center">
+                      <BookOpen className="h-5 w-5 mr-2" />
+                      Course Details
+                    </h2>
+                    {columnSettings.length > 0 && (
+                      <div className="text-xs text-gray-500">
+                        Showing{" "}
+                        {
+                          columnSettings.filter(
+                            (col) =>
+                              col.isVisible &&
+                              [
+                                "quiz",
+                                "midterm",
+                                "assignment",
+                                "project",
+                                "final",
+                                "total",
+                                "grade",
+                              ].includes(col.columnKey),
+                          ).length
+                        }{" "}
+                        of{" "}
+                        {
+                          columnSettings.filter((col) =>
+                            [
+                              "quiz",
+                              "midterm",
+                              "assignment",
+                              "project",
+                              "final",
+                              "total",
+                              "grade",
+                            ].includes(col.columnKey),
+                          ).length
+                        }{" "}
+                        mark columns
+                      </div>
+                    )}
+                  </div>
 
                   <div className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-gray-200">
@@ -345,9 +532,41 @@ const CheckResultPage = () => {
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Credits
                           </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Grade
-                          </th>
+                          {isCourseColumnVisible("quiz") && (
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              {getColumnDisplayName("quiz")}
+                            </th>
+                          )}
+                          {isCourseColumnVisible("midterm") && (
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              {getColumnDisplayName("midterm")}
+                            </th>
+                          )}
+                          {isCourseColumnVisible("assignment") && (
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              {getColumnDisplayName("assignment")}
+                            </th>
+                          )}
+                          {isCourseColumnVisible("project") && (
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              {getColumnDisplayName("project")}
+                            </th>
+                          )}
+                          {isCourseColumnVisible("final") && (
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              {getColumnDisplayName("final")}
+                            </th>
+                          )}
+                          {isCourseColumnVisible("total") && (
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              {getColumnDisplayName("total")}
+                            </th>
+                          )}
+                          {isCourseColumnVisible("grade") && (
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              {getColumnDisplayName("grade")}
+                            </th>
+                          )}
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Grade Points
                           </th>
@@ -369,13 +588,45 @@ const CheckResultPage = () => {
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                               {course.creditHours}
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span
-                                className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getGradeColor(course.grade)}`}
-                              >
-                                {course.grade}
-                              </span>
-                            </td>
+                            {isCourseColumnVisible("quiz") && (
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                {course.quiz || "-"}
+                              </td>
+                            )}
+                            {isCourseColumnVisible("midterm") && (
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                {course.midterm || "-"}
+                              </td>
+                            )}
+                            {isCourseColumnVisible("assignment") && (
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                {course.assignment || "-"}
+                              </td>
+                            )}
+                            {isCourseColumnVisible("project") && (
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                {course.project || "-"}
+                              </td>
+                            )}
+                            {isCourseColumnVisible("final") && (
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                {course.final || "-"}
+                              </td>
+                            )}
+                            {isCourseColumnVisible("total") && (
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                {course.total || "-"}
+                              </td>
+                            )}
+                            {isCourseColumnVisible("grade") && (
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span
+                                  className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getGradeColor(course.grade)}`}
+                                >
+                                  {course.grade}
+                                </span>
+                              </td>
+                            )}
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                               {(parseFloat(course.gradePoints) || 0).toFixed(1)}
                             </td>

@@ -12,6 +12,7 @@ import {
   Calendar,
   ArrowRight,
   RefreshCw,
+  Settings,
 } from "lucide-react";
 import { adminAPI, handleApiError } from "../../services/api";
 import LoadingSpinner, {
@@ -63,6 +64,13 @@ const AdminDashboard = () => {
       icon: BarChart3,
       to: "/admin/statistics",
       color: "from-purple-500 to-pink-500",
+    },
+    {
+      title: "Column Settings",
+      description: "Customize which columns are displayed in results",
+      icon: Settings,
+      to: "/admin/column-settings",
+      color: "from-orange-500 to-red-500",
     },
   ];
 
@@ -229,7 +237,7 @@ const AdminDashboard = () => {
               Quick Actions
             </h2>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {quickActions.map((action, index) => {
                 const Icon = action.icon;
                 return (
