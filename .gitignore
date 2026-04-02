@@ -6,15 +6,39 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-# Environment variables
+# ===================================
+# ENVIRONMENT VARIABLES - NEVER COMMIT!
+# ===================================
+# Global .env ignore patterns
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.*.example
+
+# Specific environment files
 .env
 .env.*
 !.env.example
+!.env.*.example
 .env.local
+.env.development
 .env.development.local
+.env.test
 .env.test.local
-.env.production.local
 .env.production
+.env.production.local
+
+# Backend environment files
+backend/.env
+backend/.env.*
+!backend/.env.example
+!backend/.env.*.example
+
+# Frontend environment files
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
+!frontend/.env.*.example
 
 # Build outputs
 dist/
