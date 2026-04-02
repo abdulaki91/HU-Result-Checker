@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "build:prod": "cp .env.production .env && vite build",
+    "build:prod": "node -e \"require('fs').copyFileSync('.env.production', '.env')\" && vite build",
     "preview": "vite preview"
   },
   "dependencies": {

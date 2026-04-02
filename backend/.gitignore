@@ -1,12 +1,14 @@
-# Environment variables
+# Environment variables - NEVER commit these!
 .env
 .env.*
 !.env.example
+!.env.*.example
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
 .env.production
+.env.development
 
 # Dependencies
 node_modules/
@@ -22,15 +24,11 @@ yarn-error.log*
 pids
 *.pid
 *.seed
-*.env
-
 *.pid.lock
-*.env
 
 # Coverage directory used by tools like istanbul
 coverage/
-.env
-*.env
+
 # Build outputs
 dist/
 build/
