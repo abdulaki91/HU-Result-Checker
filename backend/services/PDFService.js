@@ -34,15 +34,6 @@ class PDFService {
         yPosition,
       );
 
-      // Academic Performance Summary
-      yPosition = this.drawAcademicSummary(
-        page,
-        boldFont,
-        regularFont,
-        transcript.academicPerformance,
-        yPosition,
-      );
-
       // Course Details
       yPosition = this.drawCourseDetails(
         page,
@@ -166,61 +157,6 @@ class PDFService {
     });
 
     return Math.min(tempY, yPosition - leftColumn.length * 18) - 20;
-  }
-
-  drawAcademicSummary(
-    page,
-    boldFont,
-    regularFont,
-    academicPerformance,
-    yPosition,
-  ) {
-    // Section title
-    page.drawText("ACADEMIC PERFORMANCE SUMMARY", {
-      x: this.margin,
-      y: yPosition,
-      size: 12,
-      font: boldFont,
-      color: rgb(0.2, 0.2, 0.2),
-    });
-
-    yPosition -= 25;
-
-    const summaryInfo = [
-      { label: "GPA:", value: academicPerformance.gpa.toFixed(2) },
-      { label: "CGPA:", value: academicPerformance.cgpa.toFixed(2) },
-      {
-        label: "Total Credit Hours:",
-        value: academicPerformance.totalCreditHours.toString(),
-      },
-      {
-        label: "Completed Credit Hours:",
-        value: academicPerformance.completedCreditHours.toString(),
-      },
-      { label: "Grade Status:", value: academicPerformance.gradeStatus },
-    ];
-
-    summaryInfo.forEach((info) => {
-      page.drawText(info.label, {
-        x: this.margin,
-        y: yPosition,
-        size: 10,
-        font: boldFont,
-        color: rgb(0.3, 0.3, 0.3),
-      });
-
-      page.drawText(info.value, {
-        x: this.margin + 150,
-        y: yPosition,
-        size: 10,
-        font: regularFont,
-        color: rgb(0, 0, 0),
-      });
-
-      yPosition -= 18;
-    });
-
-    return yPosition - 20;
   }
 
   drawCourseDetails(page, boldFont, regularFont, courses, yPosition) {

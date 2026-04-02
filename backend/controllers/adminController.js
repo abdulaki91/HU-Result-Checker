@@ -467,6 +467,41 @@ const clearAllStudents = async (req, res) => {
   }
 };
 
+// Reset student view count
+const resetStudentViewCount = async (req, res) => {
+  try {
+    const { studentId } = req.params;
+
+    const student = await Student.findByPk(studentId);
+    if (!student) {
+      return res.status(404).json({
+        success: false,
+        message: "Student not found",
+      });
+    }
+
+    await student.resetViewCount();
+
+    res.json({
+      success: true,
+      message: "Student view count reset successfully",
+      data: {
+        studentId: student.studentId,
+        fullName: student.fullName,
+        viewCount: student.viewCount,
+        isViewLocked: student.isViewLocked,
+      },
+    });
+  } catch (error) {
+    console.error("Reset view count error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to reset view count",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
+  }
+};
+
 module.exports = {
   getAllStudents,
   getStudentDetails,
@@ -476,4 +511,5 @@ module.exports = {
   getStatistics,
   bulkDelete,
   clearAllStudents,
+  resetStudentViewCount,
 };

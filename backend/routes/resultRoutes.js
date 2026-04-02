@@ -1,9 +1,6 @@
 const express = require("express");
 const { param } = require("express-validator");
-const {
-  getStudentById,
-  downloadResultPDF,
-} = require("../controllers/studentController");
+const { getStudentById } = require("../controllers/studentController");
 
 const router = express.Router();
 
@@ -26,8 +23,5 @@ const studentIdValidation = [
 router.get("/:studentId", studentIdValidation, getStudentById);
 
 // @route   GET /api/results/:studentId/transcript
-// @desc    Download student transcript as PDF
-// @access  Public
-router.get("/:studentId/transcript", studentIdValidation, downloadResultPDF);
 
 module.exports = router;

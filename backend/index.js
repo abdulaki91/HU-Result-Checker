@@ -87,15 +87,6 @@ app.use("/api/admin", authenticateToken, adminRoutes);
 app.use("/api/results", resultRoutes);
 app.use("/api/column-settings", columnSettingsRoutes);
 
-// Serve React app in production
-if (process.env.NODE_ENV === "production") {
-  app.use(express.static(path.join(__dirname, "../frontend/dist")));
-
-  app.get("*", (req, res) => {
-    res.sendFile(path.join(__dirname, "../frontend/dist/index.html"));
-  });
-}
-
 // Error handling middleware
 app.use(notFound);
 app.use(errorHandler);

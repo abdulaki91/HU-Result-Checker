@@ -1,20 +1,19 @@
 const { Student, Course } = require("../models/Student");
 const { ColumnSetting } = require("../models");
 const ExcelService = require("../services/ExcelService");
-const PDFService = require("../services/PDFService");
 const { validationResult } = require("express-validator");
 const { Op } = require("sequelize");
 
-// Helper function to get visible columns for student data
+// Helper function to get all column settings for student data
 const getVisibleColumns = async () => {
   try {
-    const visibleColumns = await ColumnSetting.findAll({
-      where: { isVisible: true },
+    const allColumns = await ColumnSetting.findAll({
       order: [["displayOrder", "ASC"]],
     });
 
-    // Map to column keys that exist in Student model
-    const studentColumns = visibleColumns
+    // Get visible student columns for backend filtering
+    const visibleColumns = allColumns
+      .filter((col) => col.isVisible && col.columnType === "student_info")
       .map((col) => col.columnKey)
       .filter((key) =>
         [
@@ -35,13 +34,13 @@ const getVisibleColumns = async () => {
       );
 
     // Always include 'id' field as it's required for database operations
-    if (!studentColumns.includes("id")) {
-      studentColumns.unshift("id");
+    if (!visibleColumns.includes("id")) {
+      visibleColumns.unshift("id");
     }
 
     return {
-      columns: studentColumns,
-      settings: visibleColumns,
+      columns: visibleColumns,
+      settings: allColumns, // Return all settings for frontend
     };
   } catch (error) {
     console.error("Error fetching visible columns:", error);
@@ -206,6 +205,21 @@ const getStudentById = async (req, res) => {
       });
     }
 
+    // Check if result viewing is locked
+    if (student.isResultLocked()) {
+      return res.status(403).json({
+        success: false,
+        message: "Result viewing is locked",
+        locked: true,
+        viewCount: student.viewCount,
+        maxViews: student.maxViews,
+        details: `You have exceeded the maximum number of views (${student.maxViews}). Please contact your administrator to reset your view count.`,
+      });
+    }
+
+    // Increment view count
+    const newViewCount = await student.incrementViewCount();
+
     const transcript = await student.getTranscript();
 
     // Filter course data based on visible columns
@@ -213,10 +227,17 @@ const getStudentById = async (req, res) => {
       transcript.courses = transcript.courses.map((course) => {
         const filteredCourse = { ...course };
 
-        // Keep only visible course columns
+        // Keep essential course columns and visible mark columns
         Object.keys(filteredCourse).forEach((key) => {
           if (
-            !["courseCode", "courseName", "credits"].includes(key) &&
+            ![
+              "courseCode",
+              "courseName",
+              "creditHours",
+              "grade",
+              "gradePoints",
+              "marks",
+            ].includes(key) &&
             !visibleCourseColumns.includes(key)
           ) {
             delete filteredCourse[key];
@@ -231,7 +252,17 @@ const getStudentById = async (req, res) => {
       success: true,
       data: transcript,
       visibleColumns: visibleCourseColumns, // Include visible columns info for frontend
-      columnSettings: columnSettings, // Include all column settings for frontend
+      columnSettings: columnSettings.filter(
+        (col) =>
+          ["marks", "calculated"].includes(col.columnType) ||
+          ["student_info"].includes(col.columnType),
+      ), // Include relevant column settings for frontend
+      viewInfo: {
+        viewCount: newViewCount,
+        maxViews: student.maxViews,
+        remainingViews: Math.max(0, student.maxViews - newViewCount),
+        isLocked: student.isResultLocked(),
+      },
     });
   } catch (error) {
     console.error("Get student error:", error);
@@ -394,48 +425,6 @@ const getFilters = async (req, res) => {
   }
 };
 
-// Download result as PDF
-const downloadResultPDF = async (req, res) => {
-  try {
-    const { studentId } = req.params;
-
-    const student = await Student.findOne({
-      where: { studentId: studentId.toUpperCase() },
-      include: [
-        {
-          model: Course,
-          as: "courses",
-          required: false,
-        },
-      ],
-    });
-
-    if (!student) {
-      return res.status(404).json({
-        success: false,
-        message: "Student not found",
-      });
-    }
-
-    const pdfService = new PDFService();
-    const pdfBuffer = await pdfService.generateTranscript(student);
-
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename="transcript_${studentId}.pdf"`,
-    );
-    res.send(pdfBuffer);
-  } catch (error) {
-    console.error("Download PDF error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to generate PDF",
-      error: process.env.NODE_ENV === "development" ? error.message : undefined,
-    });
-  }
-};
-
 // Validate student ID format
 const validateStudentId = async (req, res) => {
   try {
@@ -483,6 +472,5 @@ module.exports = {
   getStudentById,
   searchStudents,
   getFilters,
-  downloadResultPDF,
   validateStudentId,
 };

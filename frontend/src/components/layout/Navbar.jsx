@@ -15,7 +15,6 @@ import { useAuth } from "../../contexts/AuthContext";
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const [showUserMenu, setShowUserMenu] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { isAuthenticated, user, logout, getUserInitials } = useAuth();
@@ -23,7 +22,6 @@ const Navbar = () => {
   const handleLogout = async () => {
     await logout();
     navigate("/");
-    setShowUserMenu(false);
   };
 
   const navLinks = [
@@ -77,59 +75,47 @@ const Navbar = () => {
               </Link>
             ))}
 
+            {/* Admin Links - Direct Navigation */}
+            {isAuthenticated && user?.role === "admin" && (
+              <>
+                {adminLinks.map((link) => {
+                  const Icon = link.icon;
+                  return (
+                    <Link
+                      key={link.to}
+                      to={link.to}
+                      className={`flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        isActive(link.to)
+                          ? "text-primary-600 bg-primary-50"
+                          : "text-gray-700 hover:text-primary-600 hover:bg-gray-50"
+                      }`}
+                    >
+                      <Icon className="h-4 w-4 mr-2" />
+                      {link.label}
+                    </Link>
+                  );
+                })}
+              </>
+            )}
+
             {/* Auth Section */}
             {isAuthenticated ? (
-              <div className="relative">
-                <button
-                  onClick={() => setShowUserMenu(!showUserMenu)}
-                  className="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-50 transition-colors"
-                >
+              <div className="flex items-center space-x-3">
+                <div className="flex items-center space-x-2 px-3 py-2 bg-gray-50 rounded-lg">
                   <div className="w-8 h-8 bg-gradient-to-r from-primary-500 to-indigo-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
                     {getUserInitials()}
                   </div>
                   <span className="text-sm font-medium text-gray-700">
                     {user?.fullName}
                   </span>
+                </div>
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                >
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Logout
                 </button>
-
-                <AnimatePresence>
-                  {showUserMenu && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1"
-                    >
-                      {user?.role === "admin" && (
-                        <>
-                          {adminLinks.map((link) => {
-                            const Icon = link.icon;
-                            return (
-                              <Link
-                                key={link.to}
-                                to={link.to}
-                                onClick={() => setShowUserMenu(false)}
-                                className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                              >
-                                <Icon className="h-4 w-4 mr-3" />
-                                {link.label}
-                              </Link>
-                            );
-                          })}
-                          <hr className="my-1" />
-                        </>
-                      )}
-
-                      <button
-                        onClick={handleLogout}
-                        className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-                      >
-                        <LogOut className="h-4 w-4 mr-3" />
-                        Logout
-                      </button>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
               </div>
             ) : (
               <Link to="/admin/login" className="btn-primary">
@@ -175,8 +161,33 @@ const Navbar = () => {
                 {isAuthenticated ? (
                   <>
                     <hr className="my-2" />
+
+                    {/* Admin Links for Mobile */}
+                    {user?.role === "admin" && (
+                      <div className="space-y-1 mb-3">
+                        {adminLinks.map((link) => {
+                          const Icon = link.icon;
+                          return (
+                            <Link
+                              key={link.to}
+                              to={link.to}
+                              onClick={() => setIsOpen(false)}
+                              className={`flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                                isActive(link.to)
+                                  ? "text-primary-600 bg-primary-50"
+                                  : "text-gray-700 hover:text-primary-600 hover:bg-gray-50"
+                              }`}
+                            >
+                              <Icon className="h-4 w-4 mr-3" />
+                              {link.label}
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    )}
+
                     <div className="px-3 py-2">
-                      <div className="flex items-center space-x-2 mb-3">
+                      <div className="flex items-center space-x-2 mb-3 p-2 bg-gray-50 rounded-lg">
                         <div className="w-8 h-8 bg-gradient-to-r from-primary-500 to-indigo-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
                           {getUserInitials()}
                         </div>
@@ -185,28 +196,9 @@ const Navbar = () => {
                         </span>
                       </div>
 
-                      {user?.role === "admin" && (
-                        <div className="space-y-1 mb-3">
-                          {adminLinks.map((link) => {
-                            const Icon = link.icon;
-                            return (
-                              <Link
-                                key={link.to}
-                                to={link.to}
-                                onClick={() => setIsOpen(false)}
-                                className="flex items-center px-2 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded"
-                              >
-                                <Icon className="h-4 w-4 mr-3" />
-                                {link.label}
-                              </Link>
-                            );
-                          })}
-                        </div>
-                      )}
-
                       <button
                         onClick={handleLogout}
-                        className="flex items-center w-full px-2 py-2 text-sm text-red-600 hover:bg-red-50 rounded"
+                        className="flex items-center w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                       >
                         <LogOut className="h-4 w-4 mr-3" />
                         Logout

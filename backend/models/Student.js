@@ -127,6 +127,29 @@ const Student = sequelize.define(
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW,
     },
+    // Result viewing restrictions
+    viewCount: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0,
+      validate: {
+        min: 0,
+      },
+    },
+    maxViews: {
+      type: DataTypes.INTEGER,
+      defaultValue: 10,
+      validate: {
+        min: 1,
+      },
+    },
+    isViewLocked: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
+    lastViewedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
   },
   {
     tableName: "students",
@@ -182,8 +205,8 @@ const Course = sequelize.define(
         "C+",
         "C",
         "C-",
-        "D+",
         "D",
+        "Fx",
         "F",
         "I",
         "W",
@@ -200,32 +223,32 @@ const Course = sequelize.define(
     },
     // Marks breakdown
     quizMarks: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.DECIMAL(5, 2),
       defaultValue: 0,
       validate: { min: 0, max: 100 },
     },
     midtermMarks: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.DECIMAL(5, 2),
       defaultValue: 0,
       validate: { min: 0, max: 100 },
     },
     assignmentMarks: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.DECIMAL(5, 2),
       defaultValue: 0,
       validate: { min: 0, max: 100 },
     },
     projectMarks: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.DECIMAL(5, 2),
       defaultValue: 0,
       validate: { min: 0, max: 100 },
     },
     finalMarks: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.DECIMAL(5, 2),
       defaultValue: 0,
       validate: { min: 0, max: 100 },
     },
     totalMarks: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.DECIMAL(5, 2),
       defaultValue: 0,
       validate: { min: 0, max: 100 },
     },
@@ -251,8 +274,8 @@ Student.getGradePoints = function (grade) {
     "C+": 2.3,
     C: 2.0,
     "C-": 1.7,
-    "D+": 1.3,
     D: 1.0,
+    Fx: 0.0,
     F: 0.0,
     I: 0.0,
     W: 0.0,
@@ -269,10 +292,10 @@ Student.calculateGrade = function (totalMarks) {
   if (totalMarks >= 70) return "B";
   if (totalMarks >= 65) return "B-";
   if (totalMarks >= 60) return "C+";
-  if (totalMarks >= 55) return "C";
-  if (totalMarks >= 50) return "C-";
-  if (totalMarks >= 45) return "D+";
+  if (totalMarks >= 50) return "C";
+  if (totalMarks >= 45) return "C-";
   if (totalMarks >= 40) return "D";
+  if (totalMarks >= 30) return "Fx";
   return "F";
 };
 
@@ -297,7 +320,7 @@ Student.prototype.calculateGPA = async function () {
     totalGradePoints += course.gradePoints * course.creditHours;
     totalCreditHours += course.creditHours;
 
-    if (!["F", "I", "W"].includes(course.grade)) {
+    if (!["F", "Fx", "I", "W"].includes(course.grade)) {
       completedCreditHours += course.creditHours;
     }
   });
@@ -319,6 +342,33 @@ Student.prototype.getGradeStatus = function () {
   return "Fail";
 };
 
+// Instance method to check if result viewing is locked
+Student.prototype.isResultLocked = function () {
+  return this.isViewLocked || this.viewCount >= this.maxViews;
+};
+
+// Instance method to increment view count
+Student.prototype.incrementViewCount = async function () {
+  this.viewCount += 1;
+  this.lastViewedAt = new Date();
+
+  // Lock if max views reached
+  if (this.viewCount >= this.maxViews) {
+    this.isViewLocked = true;
+  }
+
+  await this.save();
+  return this.viewCount;
+};
+
+// Instance method to reset view count (admin only)
+Student.prototype.resetViewCount = async function () {
+  this.viewCount = 0;
+  this.isViewLocked = false;
+  this.lastViewedAt = null;
+  await this.save();
+};
+
 // Instance method to get transcript
 Student.prototype.getTranscript = async function () {
   const courses = await Course.findAll({
@@ -334,14 +384,8 @@ Student.prototype.getTranscript = async function () {
       batch: this.batch,
       semester: this.semester,
       academicYear: this.academicYear,
-    },
-    academicPerformance: {
-      gpa: parseFloat(this.gpa) || 0,
-      cgpa: parseFloat(this.cgpa) || 0,
-      totalCreditHours: this.totalCreditHours,
-      completedCreditHours: this.completedCreditHours,
-      status: this.status,
-      gradeStatus: this.getGradeStatus(),
+      email: this.email,
+      phone: this.phone,
     },
     courses: courses.map((course) => ({
       courseCode: course.courseCode,
@@ -350,12 +394,12 @@ Student.prototype.getTranscript = async function () {
       grade: course.grade,
       gradePoints: parseFloat(course.gradePoints) || 0,
       marks: {
-        quiz: course.quizMarks,
-        midterm: course.midtermMarks,
-        assignment: course.assignmentMarks,
-        project: course.projectMarks,
-        final: course.finalMarks,
-        total: course.totalMarks,
+        quiz: parseFloat(course.quizMarks) || 0,
+        midterm: parseFloat(course.midtermMarks) || 0,
+        assignment: parseFloat(course.assignmentMarks) || 0,
+        project: parseFloat(course.projectMarks) || 0,
+        final: parseFloat(course.finalMarks) || 0,
+        total: parseFloat(course.totalMarks) || 0,
       },
     })),
     generatedAt: new Date(),

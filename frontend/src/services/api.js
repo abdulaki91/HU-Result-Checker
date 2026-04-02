@@ -76,12 +76,6 @@ export const studentAPI = {
   // Validate student ID
   validateId: (studentId) =>
     api.get(`/students/validate/${encodeURIComponent(studentId)}`),
-
-  // Download result PDF
-  downloadPDF: (studentId) =>
-    api.get(`/students/${encodeURIComponent(studentId)}/pdf`, {
-      responseType: "blob",
-    }),
 };
 
 // Admin API (Protected)
@@ -130,6 +124,10 @@ export const adminAPI = {
 
   // Statistics
   getStatistics: () => api.get("/admin/statistics"),
+
+  // Reset student view count
+  resetStudentViewCount: (studentId) =>
+    api.post(`/admin/students/${studentId}/reset-view-count`),
 };
 
 // Column Settings API (Protected)
@@ -155,12 +153,6 @@ export const resultAPI = {
   // Get result by student ID
   getResult: (studentId) =>
     api.get(`/results/${encodeURIComponent(studentId)}`),
-
-  // Download transcript
-  downloadTranscript: (studentId) =>
-    api.get(`/results/${encodeURIComponent(studentId)}/transcript`, {
-      responseType: "blob",
-    }),
 };
 
 // Health check

@@ -4,7 +4,6 @@ const {
   getStudentById,
   searchStudents,
   getFilters,
-  downloadResultPDF,
   validateStudentId,
 } = require("../controllers/studentController");
 
@@ -61,8 +60,5 @@ router.get("/validate/:studentId", studentIdValidation, validateStudentId);
 router.get("/:studentId", studentIdValidation, getStudentById);
 
 // @route   GET /api/students/:studentId/pdf
-// @desc    Download student result as PDF
-// @access  Public
-router.get("/:studentId/pdf", studentIdValidation, downloadResultPDF);
 
 module.exports = router;

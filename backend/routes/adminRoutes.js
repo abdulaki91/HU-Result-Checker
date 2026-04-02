@@ -9,16 +9,21 @@ const {
   getStatistics,
   bulkDelete,
   clearAllStudents,
+  resetStudentViewCount,
 } = require("../controllers/adminController");
 const {
   uploadExcel: uploadMiddleware,
   handleUploadError,
 } = require("../middleware/uploadMiddleware");
-const { requireRole } = require("../middleware/authMiddleware");
+const {
+  requireRole,
+  authenticateToken,
+} = require("../middleware/authMiddleware");
 
 const router = express.Router();
 
-// All admin routes require admin role
+// All admin routes require authentication and admin role
+router.use(authenticateToken);
 router.use(requireRole(["admin"]));
 
 // Validation rules
@@ -181,5 +186,10 @@ router.get("/sample-files/:type", (req, res) => {
   );
   res.sendFile(filePath);
 });
+
+// @route   POST /api/admin/students/:studentId/reset-view-count
+// @desc    Reset student view count
+// @access  Private/Admin
+router.post("/:studentId/reset-view-count", resetStudentViewCount);
 
 module.exports = router;

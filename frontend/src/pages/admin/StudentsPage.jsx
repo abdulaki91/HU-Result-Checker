@@ -8,6 +8,7 @@ import {
   Users,
   Download,
   Plus,
+  RefreshCw,
 } from "lucide-react";
 import { adminAPI, handleApiError } from "../../services/api";
 import LoadingSpinner, {
@@ -64,6 +65,25 @@ const StudentsPage = () => {
     e.preventDefault();
     setCurrentPage(1);
     loadStudents();
+  };
+
+  const handleResetViewCount = async (studentId, studentName) => {
+    if (
+      !window.confirm(
+        `Are you sure you want to reset the view count for ${studentName}?`,
+      )
+    ) {
+      return;
+    }
+
+    try {
+      await adminAPI.resetStudentViewCount(studentId);
+      toast.success("View count reset successfully");
+      loadStudents(); // Reload the students list
+    } catch (error) {
+      const errorMessage = handleApiError(error);
+      toast.error(errorMessage);
+    }
   };
 
   const handleDelete = async (studentId, studentName) => {
@@ -234,6 +254,9 @@ const StudentsPage = () => {
                         GPA
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Views
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Status
                       </th>
                       <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -243,7 +266,7 @@ const StudentsPage = () => {
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {students.map((student) => (
-                      <tr key={student._id} className="hover:bg-gray-50">
+                      <tr key={student.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div>
                             <div className="text-sm font-medium text-gray-900">
@@ -262,10 +285,29 @@ const StudentsPage = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span
-                            className={`text-sm font-medium ${getGPAColor(student.gpa)}`}
+                            className={`text-sm font-medium ${getGPAColor(parseFloat(student.gpa) || 0)}`}
                           >
-                            {student.gpa.toFixed(2)}
+                            {(parseFloat(student.gpa) || 0).toFixed(2)}
                           </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">
+                            <span
+                              className={`font-medium ${
+                                student.isViewLocked
+                                  ? "text-red-600"
+                                  : (student.viewCount || 0) >=
+                                      (student.maxViews || 10) * 0.8
+                                    ? "text-orange-600"
+                                    : "text-gray-900"
+                              }`}
+                            >
+                              {student.viewCount || 0}/{student.maxViews || 10}
+                            </span>
+                          </div>
+                          {student.isViewLocked && (
+                            <div className="text-xs text-red-500">Locked</div>
+                          )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span
@@ -281,14 +323,31 @@ const StudentsPage = () => {
                                 toast.info("Edit feature coming soon!")
                               }
                               className="text-indigo-600 hover:text-indigo-900"
+                              title="Edit student"
                             >
                               <Edit className="h-4 w-4" />
                             </button>
+                            {(student.viewCount > 0 ||
+                              student.isViewLocked) && (
+                              <button
+                                onClick={() =>
+                                  handleResetViewCount(
+                                    student.id,
+                                    student.fullName,
+                                  )
+                                }
+                                className="text-blue-600 hover:text-blue-900"
+                                title="Reset view count"
+                              >
+                                <RefreshCw className="h-4 w-4" />
+                              </button>
+                            )}
                             <button
                               onClick={() =>
-                                handleDelete(student._id, student.fullName)
+                                handleDelete(student.id, student.fullName)
                               }
                               className="text-red-600 hover:text-red-900"
+                              title="Delete student"
                             >
                               <Trash2 className="h-4 w-4" />
                             </button>
