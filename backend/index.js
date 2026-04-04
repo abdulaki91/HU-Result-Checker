@@ -24,6 +24,11 @@ const { authenticateToken } = require("./middleware/authMiddleware");
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Resolve client origin from multiple possible environment variable names
+const CLIENT_ORIGIN =
+  process.env.CLIENT_URL || process.env.VITE_FRONTEND_URL || process.env.FRONTEND_URL ||
+  "http://localhost:5173";
+
 // Security middleware
 app.use(
   helmet({
@@ -46,7 +51,7 @@ app.use("/api/", limiter);
 // CORS configuration
 app.use(
   cors({
-    origin: process.env.CLIENT_URL || "http://localhost:5173",
+    origin: CLIENT_ORIGIN,
     credentials: true,
   }),
 );
@@ -105,9 +110,7 @@ const startServer = async () => {
     app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`📍 Environment: ${process.env.NODE_ENV || "development"}`);
-      console.log(
-        `🌐 Client URL: ${process.env.CLIENT_URL || "http://localhost:5173"}`,
-      );
+      console.log(`🌐 Client URL: ${CLIENT_ORIGIN}`);
       console.log(
         `🔗 Database: ${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`,
       );
