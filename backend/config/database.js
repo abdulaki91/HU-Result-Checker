@@ -1,5 +1,14 @@
 const { Sequelize } = require("sequelize");
-require("dotenv").config();
+
+// Try to load .env file, but don't fail if it doesn't exist
+try {
+  require("dotenv").config();
+  console.log("📄 Database config: .env file loaded");
+} catch (error) {
+  console.log(
+    "⚠️  Database config: No .env file found, using environment variables",
+  );
+}
 
 // Create sequelize instance - remote MySQL only
 console.log("🔧 DB Config:", {

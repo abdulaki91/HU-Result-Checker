@@ -6,8 +6,10 @@
   "scripts": {
     "dev": "nodemon index.js",
     "start": "node index.js",
+    "start:production": "node start-production.js",
     "seed": "node scripts/seedData.js",
     "db:reset": "node scripts/resetDatabase.js",
+    "test:env": "node scripts/testEnvVars.js",
     "deploy:prep": "node ../deploy-cpanel.js",
     "deploy:test": "npm run deploy:prep && npm start"
   },

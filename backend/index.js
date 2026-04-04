@@ -5,7 +5,14 @@ const morgan = require("morgan");
 const compression = require("compression");
 const rateLimit = require("express-rate-limit");
 const path = require("path");
-require("dotenv").config();
+
+// Try to load .env file, but don't fail if it doesn't exist
+try {
+  require("dotenv").config();
+  console.log("📄 .env file loaded");
+} catch (error) {
+  console.log("⚠️  No .env file found, using environment variables");
+}
 
 // Import database
 const { testConnection, syncDatabase } = require("./models");
