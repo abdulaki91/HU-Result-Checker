@@ -87,34 +87,51 @@ const User = sequelize.define(
 
 // Instance methods
 User.prototype.comparePassword = async function (candidatePassword) {
-  if (this.isLocked()) {
-    throw new Error("Account is temporarily locked");
-  }
-
-  const isMatch = await bcrypt.compare(candidatePassword, this.password);
-
-  if (!isMatch) {
-    this.loginAttempts += 1;
-
-    // Lock account after 5 failed attempts for 30 minutes
-    if (this.loginAttempts >= 5) {
-      this.lockUntil = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
+  try {
+    if (this.isLocked()) {
+      console.log(`Account locked for user: ${this.username}`);
+      throw new Error("Account is temporarily locked");
     }
 
+    console.log(`Comparing password for user: ${this.username}`);
+    const isMatch = await bcrypt.compare(candidatePassword, this.password);
+
+    if (!isMatch) {
+      console.log(
+        `Password mismatch for user: ${this.username}, incrementing login attempts`,
+      );
+      this.loginAttempts += 1;
+
+      // Lock account after 5 failed attempts for 30 minutes
+      if (this.loginAttempts >= 5) {
+        this.lockUntil = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
+        console.log(
+          `Account locked for user: ${this.username} after 5 failed attempts`,
+        );
+      }
+
+      await this.save();
+      return false;
+    }
+
+    // Reset login attempts on successful login
+    if (this.loginAttempts > 0) {
+      console.log(`Resetting login attempts for user: ${this.username}`);
+      this.loginAttempts = 0;
+      this.lockUntil = null;
+    }
+
+    this.lastLogin = new Date();
     await this.save();
-    return false;
+
+    return true;
+  } catch (error) {
+    console.error(
+      `comparePassword error for user ${this.username}:`,
+      error.message,
+    );
+    throw error;
   }
-
-  // Reset login attempts on successful login
-  if (this.loginAttempts > 0) {
-    this.loginAttempts = 0;
-    this.lockUntil = null;
-  }
-
-  this.lastLogin = new Date();
-  await this.save();
-
-  return true;
 };
 
 User.prototype.getTokenPayload = function () {
@@ -134,27 +151,41 @@ User.prototype.isLocked = function () {
 
 // Static method to find by credentials
 User.findByCredentials = async function (identifier, password) {
-  // Find user by email or username
-  const user = await this.findOne({
-    where: {
-      [require("sequelize").Op.or]: [
-        { email: identifier.toLowerCase() },
-        { username: identifier },
-      ],
-      isActive: true,
-    },
-  });
+  try {
+    console.log(`Searching for user with identifier: ${identifier}`);
 
-  if (!user) {
-    throw new Error("Invalid credentials");
+    // Find user by email or username
+    const user = await this.findOne({
+      where: {
+        [require("sequelize").Op.or]: [
+          { email: identifier.toLowerCase() },
+          { username: identifier },
+        ],
+        isActive: true,
+      },
+    });
+
+    if (!user) {
+      console.log(`No user found with identifier: ${identifier}`);
+      throw new Error("Invalid credentials");
+    }
+
+    console.log(
+      `User found: ${user.username} (${user.email}), checking password...`,
+    );
+
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) {
+      console.log(`Password mismatch for user: ${user.username}`);
+      throw new Error("Invalid credentials");
+    }
+
+    console.log(`Password verified for user: ${user.username}`);
+    return user;
+  } catch (error) {
+    console.error("findByCredentials error:", error.message);
+    throw error;
   }
-
-  const isMatch = await user.comparePassword(password);
-  if (!isMatch) {
-    throw new Error("Invalid credentials");
-  }
-
-  return user;
 };
 
 // Remove password from JSON output

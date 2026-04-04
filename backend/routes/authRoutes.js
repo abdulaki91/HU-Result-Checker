@@ -51,6 +51,7 @@ router.post("/login", loginValidation, async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      console.log("Login validation errors:", errors.array());
       return res.status(400).json({
         success: false,
         message: "Validation failed",
@@ -59,9 +60,11 @@ router.post("/login", loginValidation, async (req, res) => {
     }
 
     const { identifier, password } = req.body;
+    console.log(`Login attempt for identifier: ${identifier}`);
 
     // Find user and validate password
     const user = await User.findByCredentials(identifier, password);
+    console.log(`Login successful for user: ${user.username} (${user.email})`);
 
     // Generate token
     const token = generateToken(user);
@@ -75,7 +78,12 @@ router.post("/login", loginValidation, async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Login error:", error);
+    console.error("Login error details:", {
+      message: error.message,
+      stack: error.stack,
+      identifier: req.body?.identifier,
+      timestamp: new Date().toISOString(),
+    });
 
     if (
       error.message === "Invalid credentials" ||
@@ -87,9 +95,20 @@ router.post("/login", loginValidation, async (req, res) => {
       });
     }
 
+    // Database connection or other system errors
+    if (
+      error.name === "SequelizeConnectionError" ||
+      error.name === "SequelizeTimeoutError"
+    ) {
+      return res.status(503).json({
+        success: false,
+        message: "Database connection error. Please try again later.",
+      });
+    }
+
     res.status(500).json({
       success: false,
-      message: "Login failed",
+      message: "Login failed. Please try again.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }

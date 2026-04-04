@@ -109,14 +109,50 @@ if (process.env.NODE_ENV === "development") {
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // Health check
-app.get("/api/health", (req, res) => {
-  res.json({
-    success: true,
-    message: "Server is running",
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || "development",
-    database: "MySQL",
-  });
+app.get("/api/health", async (req, res) => {
+  try {
+    // Test database connection
+    const { sequelize } = require("./models");
+    await sequelize.authenticate();
+
+    // Get user count
+    const User = require("./models/User");
+    const userCount = await User.count();
+    const adminCount = await User.count({
+      where: { role: "admin", isActive: true },
+    });
+
+    res.json({
+      success: true,
+      message: "Server is running",
+      timestamp: new Date().toISOString(),
+      environment: process.env.NODE_ENV || "development",
+      database: {
+        status: "connected",
+        type: "MySQL",
+        host: process.env.DB_HOST,
+        port: process.env.DB_PORT,
+        name: process.env.DB_NAME,
+        userCount,
+        adminCount,
+      },
+      cors: {
+        allowedOrigins: allowedOrigins,
+      },
+    });
+  } catch (error) {
+    console.error("Health check error:", error);
+    res.status(503).json({
+      success: false,
+      message: "Server health check failed",
+      timestamp: new Date().toISOString(),
+      environment: process.env.NODE_ENV || "development",
+      database: {
+        status: "disconnected",
+        error: error.message,
+      },
+    });
+  }
 });
 
 // API routes
