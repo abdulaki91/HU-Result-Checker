@@ -2,6 +2,14 @@ const { Sequelize } = require("sequelize");
 require("dotenv").config();
 
 // Create sequelize instance - remote MySQL only
+console.log("🔧 DB Config:", {
+  host: process.env.DB_HOST,
+  port: process.env.DB_PORT,
+  database: process.env.DB_NAME,
+  user: process.env.DB_USER,
+  passwordLength: process.env.DB_PASSWORD?.length || 0,
+});
+
 const sequelize = new Sequelize(
   process.env.DB_NAME,
   process.env.DB_USER,
@@ -36,6 +44,10 @@ const testConnection = async () => {
     return true;
   } catch (error) {
     console.error("❌ MySQL connection failed:", error.message);
+    console.error("❌ Error code:", error.code);
+    console.error("❌ Error errno:", error.errno);
+    console.error("❌ SQL state:", error.sqlState);
+    console.error("❌ Full error:", error);
     throw error; // Don't continue without database
   }
 };
