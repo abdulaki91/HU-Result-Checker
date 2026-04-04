@@ -24,10 +24,32 @@ const { authenticateToken } = require("./middleware/authMiddleware");
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Resolve client origin from multiple possible environment variable names
-const CLIENT_ORIGIN =
-  process.env.CLIENT_URL || process.env.VITE_FRONTEND_URL || process.env.FRONTEND_URL ||
-  "http://localhost:5173";
+// Resolve client origins for CORS
+const getAllowedOrigins = () => {
+  const origins = [];
+
+  // Add production URL if set
+  if (process.env.CLIENT_URL) {
+    origins.push(process.env.CLIENT_URL);
+  }
+
+  // Add development URLs
+  origins.push("http://localhost:5173");
+  origins.push("http://localhost:3000");
+  origins.push("http://127.0.0.1:5173");
+
+  // Add any additional URLs from environment
+  if (process.env.VITE_FRONTEND_URL) {
+    origins.push(process.env.VITE_FRONTEND_URL);
+  }
+  if (process.env.FRONTEND_URL) {
+    origins.push(process.env.FRONTEND_URL);
+  }
+
+  return origins;
+};
+
+const allowedOrigins = getAllowedOrigins();
 
 // Security middleware
 app.use(
@@ -51,8 +73,20 @@ app.use("/api/", limiter);
 // CORS configuration
 app.use(
   cors({
-    origin: CLIENT_ORIGIN,
+    origin: function (origin, callback) {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.indexOf(origin) !== -1) {
+        callback(null, true);
+      } else {
+        console.warn(`CORS blocked request from origin: ${origin}`);
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
   }),
 );
 
@@ -110,7 +144,7 @@ const startServer = async () => {
     app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`📍 Environment: ${process.env.NODE_ENV || "development"}`);
-      console.log(`🌐 Client URL: ${CLIENT_ORIGIN}`);
+      console.log(`🌐 Allowed Origins: ${allowedOrigins.join(", ")}`);
       console.log(
         `🔗 Database: ${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`,
       );
