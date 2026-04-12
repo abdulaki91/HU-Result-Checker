@@ -119,7 +119,8 @@ const AssessmentConfig = sequelize.define(
         }
       },
       beforeCreate: async (config) => {
-        // If this is set as active, deactivate all others
+        // Only deactivate others if this is explicitly set as active
+        // Don't automatically make new configs active
         if (config.isActive) {
           await AssessmentConfig.update(
             { isActive: false },

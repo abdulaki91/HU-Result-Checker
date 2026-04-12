@@ -175,14 +175,29 @@ class ExcelService {
       throw validationError;
     }
 
+    // Detect department from first few data rows
+    let detectedDepartment = null;
+    for (let i = 0; i < Math.min(3, dataRows.length); i++) {
+      const dept = this.getColumnValue(dataRows[i], columnMapping.department);
+      if (dept && dept.trim()) {
+        detectedDepartment = dept.trim();
+        console.log(`  🏢 Detected department: ${detectedDepartment}`);
+        break;
+      }
+    }
+
     // Detect assessment configuration from first data row with marks
     console.log(`  🚀 CALLING detectAndCreateAssessmentConfig...`);
-    await this.detectAndCreateAssessmentConfig(
-      dataRows,
-      columnMapping,
-      sheetName,
+    const assessmentConfigId =
+      await this.detectAndCreateAssessmentConfigFromHeaders(
+        headerRow,
+        columnMapping,
+        sheetName,
+        detectedDepartment,
+      );
+    console.log(
+      `  ✅ detectAndCreateAssessmentConfig completed, configId: ${assessmentConfigId}`,
     );
-    console.log(`  ✅ detectAndCreateAssessmentConfig completed`);
 
     const students = [];
     const errors = [];
@@ -196,9 +211,11 @@ class ExcelService {
           dataRows[i],
           columnMapping,
           sheetName,
+          assessmentConfigId,
         );
         if (studentData) {
           studentData.uploadedBy = uploadedBy;
+          studentData.assessmentConfigId = assessmentConfigId; // Link student to specific config
           students.push(studentData);
           console.log(
             `  ✅ Row ${rowIndex} processed: ${studentData.fullName} (${studentData.studentId})`,
@@ -255,7 +272,7 @@ class ExcelService {
     };
   }
 
-  processStudentRow(row, columnMapping, sheetName) {
+  processStudentRow(row, columnMapping, sheetName, assessmentConfigId = null) {
     // Skip empty rows
     if (!row || row.every((cell) => !cell || cell.toString().trim() === "")) {
       console.log(`    ⚠️ Skipping empty row`);
@@ -329,7 +346,11 @@ class ExcelService {
 
       // Process courses - check for both multi-course and single-course formats
       console.log(`    📚 Processing courses...`);
-      student.courses = this.processCourses(row, columnMapping);
+      student.courses = this.processCourses(
+        row,
+        columnMapping,
+        assessmentConfigId,
+      );
       console.log(`    ✅ Found ${student.courses.length} course(s)`);
 
       return student;
@@ -339,7 +360,7 @@ class ExcelService {
     }
   }
 
-  processCourses(row, columnMapping) {
+  processCourses(row, columnMapping, assessmentConfigId = null) {
     const courses = [];
 
     // Check for single-course format (direct marks columns)
@@ -419,6 +440,8 @@ class ExcelService {
           projectMarks: project,
           finalMarks: final,
           totalMarks: calculatedTotal,
+          // Link to assessment configuration
+          assessmentConfigId: assessmentConfigId,
         };
 
         console.log(
@@ -486,6 +509,8 @@ class ExcelService {
             projectMarks: this.getNumericValue(row, courseGroup.project, 0),
             finalMarks: this.getNumericValue(row, courseGroup.final, 0),
             totalMarks: this.getNumericValue(row, courseGroup.total, 0),
+            // Link to assessment configuration
+            assessmentConfigId: assessmentConfigId,
           };
 
           console.log(
@@ -619,39 +644,27 @@ class ExcelService {
     // First, handle specific percentage patterns before general normalization
     let normalized = columnName.toLowerCase().trim();
 
-    // Handle percentage patterns specifically
-    if (
-      /quiz\s*\(\s*5\s*%?\s*\)/i.test(normalized) ||
-      /quiz\s*5\s*%?/i.test(normalized)
-    ) {
+    // Handle percentage patterns flexibly - match any percentage
+    if (/quiz\s*\(\s*\d+(?:\.\d+)?\s*%?\s*\)/i.test(normalized)) {
       return "quiz";
     }
     if (
-      /mid\s*\(\s*30\s*%?\s*\)/i.test(normalized) ||
-      /midterm\s*\(\s*30\s*%?\s*\)/i.test(normalized) ||
-      /mid\s*30\s*%?/i.test(normalized) ||
-      /midterm\s*30\s*%?/i.test(normalized)
+      /mid\s*\(\s*\d+(?:\.\d+)?\s*%?\s*\)/i.test(normalized) ||
+      /midterm\s*\(\s*\d+(?:\.\d+)?\s*%?\s*\)/i.test(normalized)
     ) {
       return "midterm";
     }
-    if (
-      /assignment\s*\(\s*15\s*%?\s*\)/i.test(normalized) ||
-      /assignment\s*15\s*%?/i.test(normalized)
-    ) {
+    if (/assignment\s*\(\s*\d+(?:\.\d+)?\s*%?\s*\)/i.test(normalized)) {
       return "assignment";
     }
-    if (
-      /project\s*\(\s*20\s*%?\s*\)/i.test(normalized) ||
-      /project\s*20\s*%?/i.test(normalized)
-    ) {
+    if (/project\s*\(\s*\d+(?:\.\d+)?\s*%?\s*\)/i.test(normalized)) {
       return "project";
     }
-    if (
-      /final\s*\(\s*50\s*%?\s*\)/i.test(normalized) ||
-      /final\s*50\s*%?/i.test(normalized)
-    ) {
+    if (/final\s*\(\s*\d+(?:\.\d+)?\s*%?\s*\)/i.test(normalized)) {
       return "final";
     }
+
+    // Handle without percentages
     if (/^quiz$/i.test(normalized)) {
       return "quiz";
     }
@@ -867,6 +880,130 @@ class ExcelService {
   }
 
   /**
+   * Detect assessment configuration from Excel column headers and create/activate it
+   */
+  async detectAndCreateAssessmentConfigFromHeaders(
+    headerRow,
+    columnMapping,
+    sheetName,
+    department = null,
+  ) {
+    try {
+      console.log(
+        `  🔍 Detecting assessment configuration from column headers...`,
+      );
+      console.log(`  📋 Headers:`, headerRow);
+      console.log(
+        `  🗺️ Column mapping:`,
+        JSON.stringify(columnMapping, null, 2),
+      );
+
+      // Extract percentages from column headers
+      const headerPercentages = {};
+      let totalPercentage = 0;
+      let foundPercentages = 0;
+
+      // Check each column mapping for percentage in the original header
+      for (const [key, columnIndex] of Object.entries(columnMapping)) {
+        if (
+          ["quiz", "midterm", "assignment", "project", "final"].includes(key) &&
+          columnIndex !== null
+        ) {
+          const originalHeader = headerRow[columnIndex];
+          if (originalHeader) {
+            console.log(`  📊 Checking ${key} header: "${originalHeader}"`);
+
+            // Extract percentage from header like "QUIZ(10%)" or "MID(30%)"
+            const percentMatch = originalHeader
+              .toString()
+              .match(/\((\d+(?:\.\d+)?)\s*%\)/);
+            if (percentMatch) {
+              const percentage = parseFloat(percentMatch[1]);
+              headerPercentages[key] = percentage;
+              totalPercentage += percentage;
+              foundPercentages++;
+              console.log(`  ✅ Found ${key}: ${percentage}%`);
+            } else {
+              console.log(`  ⚠️ No percentage found in "${originalHeader}"`);
+            }
+          }
+        }
+      }
+
+      console.log(`  📊 Found ${foundPercentages} columns with percentages`);
+      console.log(`  📊 Total percentage detected: ${totalPercentage}%`);
+      console.log(`  📊 Header percentages:`, headerPercentages);
+
+      if (foundPercentages < 3) {
+        console.log(
+          `  ⚠️ Not enough columns with percentages (need at least 3), checking for department-specific config`,
+        );
+        return await this.getDepartmentConfig(department, sheetName);
+      }
+
+      // Validate that weights add up to 100 (or close to it)
+      if (Math.abs(totalPercentage - 100) > 5) {
+        console.log(
+          `  ⚠️ Total percentage (${totalPercentage}%) doesn't add up to 100%, checking for department-specific config`,
+        );
+        return await this.getDepartmentConfig(department, sheetName);
+      }
+
+      // Create configuration
+      const detectedConfig = {
+        quizWeight: headerPercentages.quiz || 0,
+        midtermWeight: headerPercentages.midterm || 0,
+        assignmentWeight: headerPercentages.assignment || 0,
+        projectWeight: headerPercentages.project || 0,
+        finalWeight: headerPercentages.final || 0,
+        quizMaxMarks: headerPercentages.quiz || 0,
+        midtermMaxMarks: headerPercentages.midterm || 0,
+        assignmentMaxMarks: headerPercentages.assignment || 0,
+        projectMaxMarks: headerPercentages.project || 0,
+        finalMaxMarks: headerPercentages.final || 0,
+      };
+
+      console.log(`  📐 Detected configuration:`, detectedConfig);
+
+      // Check if this configuration already exists
+      const { AssessmentConfig } = require("../models");
+
+      // Create a unique config name based on the weightings
+      const configName = `auto-${detectedConfig.quizWeight}-${detectedConfig.midtermWeight}-${detectedConfig.assignmentWeight}-${detectedConfig.projectWeight}-${detectedConfig.finalWeight}`;
+
+      let existingConfig = await AssessmentConfig.findOne({
+        where: { configName },
+      });
+
+      if (existingConfig) {
+        console.log(`  ✅ Configuration already exists: ${configName}`);
+        // Don't automatically set as active - let each upload use its own config
+        return existingConfig.id;
+      } else {
+        // Create new configuration (not active by default)
+        console.log(
+          `  📝 Creating new assessment configuration: ${configName}`,
+        );
+        const newConfig = await AssessmentConfig.create({
+          configName,
+          description: `Auto-detected from ${sheetName} headers (Quiz ${detectedConfig.quizWeight}%, Midterm ${detectedConfig.midtermWeight}%, Assignment ${detectedConfig.assignmentWeight}%, Project ${detectedConfig.projectWeight}%, Final ${detectedConfig.finalWeight}%)`,
+          isActive: false, // Don't set as active automatically
+          ...detectedConfig,
+        });
+        console.log(`  ✅ Created new configuration: ${configName}`);
+        return newConfig.id;
+      }
+    } catch (error) {
+      console.error(
+        `  ⚠️ Failed to detect assessment config from headers:`,
+        error.message,
+      );
+      console.log(`  ℹ️ Falling back to department-specific configuration`);
+      return await this.getDepartmentConfig(department, sheetName);
+    }
+  }
+
+  /**
    * Detect assessment configuration from Excel data and create/activate it
    */
   async detectAndCreateAssessmentConfig(dataRows, columnMapping, sheetName) {
@@ -948,30 +1085,120 @@ class ExcelService {
 
       if (existingConfig) {
         console.log(`  ✅ Configuration already exists: ${configName}`);
-        // Set as active
-        if (!existingConfig.isActive) {
-          existingConfig.isActive = true;
-          await existingConfig.save();
-          console.log(`  ✅ Activated existing configuration`);
-        }
+        // Don't automatically set as active - let each upload use its own config
+        return existingConfig.id;
       } else {
-        // Create new configuration
+        // Create new configuration (not active by default)
         console.log(
           `  📝 Creating new assessment configuration: ${configName}`,
         );
         const newConfig = await AssessmentConfig.create({
           configName,
           description: `Auto-detected from ${sheetName} (Quiz ${detectedConfig.quizWeight}%, Midterm ${detectedConfig.midtermWeight}%, Assignment ${detectedConfig.assignmentWeight}%, Project ${detectedConfig.projectWeight}%, Final ${detectedConfig.finalWeight}%)`,
-          isActive: true,
+          isActive: false, // Don't set as active automatically
           ...detectedConfig,
         });
-        console.log(
-          `  ✅ Created and activated new configuration: ${configName}`,
-        );
+        console.log(`  ✅ Created new configuration: ${configName}`);
+        return newConfig.id;
       }
     } catch (error) {
       console.error(`  ⚠️ Failed to detect assessment config:`, error.message);
       console.log(`  ℹ️ Continuing with default configuration`);
+    }
+  }
+  /**
+   * Get department-specific assessment configuration
+   * @param {string} department - Department name
+   * @param {string} sheetName - Sheet name for logging
+   * @returns {number|null} - Assessment config ID or null
+   */
+  async getDepartmentConfig(department, sheetName) {
+    try {
+      if (!department) {
+        console.log(
+          `  ℹ️ No department specified, using default configuration`,
+        );
+        return await this.getDefaultConfig();
+      }
+
+      console.log(
+        `  🏢 Looking for department-specific config for: ${department}`,
+      );
+
+      const { AssessmentConfig } = require("../models");
+
+      // Try to find department-specific config
+      const deptConfigName = `dept-${department.toLowerCase().replace(/\s+/g, "-")}`;
+      let config = await AssessmentConfig.findOne({
+        where: { configName: deptConfigName },
+      });
+
+      if (config) {
+        console.log(`  ✅ Found department config: ${deptConfigName}`);
+        return config.id;
+      }
+
+      // If no department config, create a default one for this department
+      console.log(`  📝 Creating default config for ${department}...`);
+      config = await AssessmentConfig.create({
+        configName: deptConfigName,
+        description: `Default assessment configuration for ${department} department`,
+        quizWeight: 5.0,
+        midtermWeight: 30.0,
+        assignmentWeight: 10.0,
+        projectWeight: 15.0,
+        finalWeight: 40.0,
+        quizMaxMarks: 5.0,
+        midtermMaxMarks: 30.0,
+        assignmentMaxMarks: 10.0,
+        projectMaxMarks: 15.0,
+        finalMaxMarks: 40.0,
+        isActive: false,
+      });
+
+      console.log(`  ✅ Created department config: ${deptConfigName}`);
+      return config.id;
+    } catch (error) {
+      console.error(`  ⚠️ Failed to get department config:`, error.message);
+      return await this.getDefaultConfig();
+    }
+  }
+
+  /**
+   * Get or create default assessment configuration
+   * @returns {number} - Default config ID
+   */
+  async getDefaultConfig() {
+    try {
+      const { AssessmentConfig } = require("../models");
+
+      let config = await AssessmentConfig.findOne({
+        where: { configName: "default" },
+      });
+
+      if (!config) {
+        console.log(`  📝 Creating default assessment configuration...`);
+        config = await AssessmentConfig.create({
+          configName: "default",
+          description: "Default assessment configuration",
+          quizWeight: 5.0,
+          midtermWeight: 30.0,
+          assignmentWeight: 10.0,
+          projectWeight: 15.0,
+          finalWeight: 40.0,
+          quizMaxMarks: 5.0,
+          midtermMaxMarks: 30.0,
+          assignmentMaxMarks: 10.0,
+          projectMaxMarks: 15.0,
+          finalMaxMarks: 40.0,
+          isActive: true, // Default can be active
+        });
+      }
+
+      return config.id;
+    } catch (error) {
+      console.error(`  ⚠️ Failed to get default config:`, error.message);
+      throw error;
     }
   }
 }

@@ -139,6 +139,15 @@ const Student = sequelize.define(
         key: "id",
       },
     },
+    // Assessment configuration used for this student's courses
+    assessmentConfigId: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: "assessment_configs",
+        key: "id",
+      },
+    },
     lastUpdated: {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW,
