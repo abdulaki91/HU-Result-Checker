@@ -301,14 +301,15 @@ class ExcelService {
       student.academicYear =
         this.getColumnValue(row, columnMapping.academicYear) ||
         `${student.batch}-${parseInt(student.batch) + 1}`;
-      student.email = this.getColumnValue(row, columnMapping.email) || null;
-      student.phone = this.getColumnValue(row, columnMapping.phone) || null;
+      student.email = this.getColumnValue(row, columnMapping.email) || "N/A";
+      student.phone = this.getColumnValue(row, columnMapping.phone) || "N/A";
       student.status =
         this.getColumnValue(row, columnMapping.status) || "Active";
 
-      // Validate email format if provided
+      // Validate email format if provided and not N/A
       if (
         student.email &&
+        student.email !== "N/A" &&
         !/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/.test(student.email)
       ) {
         const error = `Invalid email format: ${student.email}`;

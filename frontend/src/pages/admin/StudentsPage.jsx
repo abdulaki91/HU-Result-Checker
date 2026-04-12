@@ -15,6 +15,7 @@ import LoadingSpinner, {
   TableSkeleton,
 } from "../../components/common/LoadingSpinner";
 import toast from "react-hot-toast";
+import EditStudentModal from "../../components/admin/EditStudentModal";
 
 const StudentsPage = () => {
   const [students, setStudents] = useState([]);
@@ -25,6 +26,8 @@ const StudentsPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pagination, setPagination] = useState({});
   const [filters, setFilters] = useState({ departments: [], batches: [] });
+  const [editingStudent, setEditingStudent] = useState(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   useEffect(() => {
     loadStudents();
@@ -64,6 +67,15 @@ const StudentsPage = () => {
   const handleSearch = (e) => {
     e.preventDefault();
     setCurrentPage(1);
+    loadStudents();
+  };
+
+  const handleEdit = (student) => {
+    setEditingStudent(student);
+    setIsEditModalOpen(true);
+  };
+
+  const handleEditSuccess = () => {
     loadStudents();
   };
 
@@ -319,9 +331,7 @@ const StudentsPage = () => {
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <div className="flex items-center justify-end space-x-2">
                             <button
-                              onClick={() =>
-                                toast.info("Edit feature coming soon!")
-                              }
+                              onClick={() => handleEdit(student)}
                               className="text-indigo-600 hover:text-indigo-900"
                               title="Edit student"
                             >
@@ -411,6 +421,14 @@ const StudentsPage = () => {
           </div>
         </motion.div>
       </div>
+
+      {/* Edit Student Modal */}
+      <EditStudentModal
+        student={editingStudent}
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        onSuccess={handleEditSuccess}
+      />
     </div>
   );
 };

@@ -48,14 +48,33 @@ const studentUpdateValidation = [
     .matches(/^\d{4}$/)
     .withMessage("Batch must be a 4-digit year"),
   body("email")
-    .optional()
-    .isEmail()
-    .withMessage("Invalid email format")
-    .normalizeEmail(),
+    .optional({ checkFalsy: true })
+    .custom((value) => {
+      // Allow N/A or empty values
+      if (!value || value === "N/A" || value.trim() === "") {
+        return true;
+      }
+      // Validate email format if provided
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(value)) {
+        throw new Error("Invalid email format");
+      }
+      return true;
+    }),
   body("phone")
-    .optional()
-    .matches(/^[\+]?[0-9\s\-\(\)]{10,15}$/)
-    .withMessage("Invalid phone number format"),
+    .optional({ checkFalsy: true })
+    .custom((value) => {
+      // Allow N/A or empty values
+      if (!value || value === "N/A" || value.trim() === "") {
+        return true;
+      }
+      // Validate phone format if provided
+      const phoneRegex = /^[\+]?[0-9\s\-\(\)]{10,15}$/;
+      if (!phoneRegex.test(value)) {
+        throw new Error("Invalid phone number format");
+      }
+      return true;
+    }),
 ];
 
 const paginationValidation = [

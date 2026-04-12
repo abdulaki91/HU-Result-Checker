@@ -67,15 +67,31 @@ const Student = sequelize.define(
     email: {
       type: DataTypes.STRING(100),
       allowNull: true,
+      defaultValue: "N/A",
       validate: {
-        isEmail: true,
+        isValidEmail(value) {
+          if (value && value !== "N/A" && value.trim() !== "") {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(value)) {
+              throw new Error("Invalid email format");
+            }
+          }
+        },
       },
     },
     phone: {
       type: DataTypes.STRING(20),
       allowNull: true,
+      defaultValue: "N/A",
       validate: {
-        is: /^[\+]?[0-9\s\-\(\)]{10,15}$/,
+        isValidPhone(value) {
+          if (value && value !== "N/A" && value.trim() !== "") {
+            const phoneRegex = /^[\+]?[0-9\s\-\(\)]{10,15}$/;
+            if (!phoneRegex.test(value)) {
+              throw new Error("Invalid phone format");
+            }
+          }
+        },
       },
     },
     // Academic Performance
@@ -137,7 +153,7 @@ const Student = sequelize.define(
     },
     maxViews: {
       type: DataTypes.INTEGER,
-      defaultValue: 10,
+      defaultValue: 6,
       validate: {
         min: 1,
       },
