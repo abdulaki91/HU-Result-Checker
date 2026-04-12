@@ -16,9 +16,10 @@ PassengerStartupFile index.js
     # Set CORS headers
     Header always set Access-Control-Allow-Origin "*"
     Header always set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
-    Header always set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With"
+    Header always set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With, X-Device-ID"
     Header always set Access-Control-Allow-Credentials "true"
     Header always set Access-Control-Max-Age "3600"
+    Header always set Access-Control-Expose-Headers "X-Device-ID"
 </IfModule>
 
 # DO NOT REMOVE OR MODIFY. CLOUDLINUX ENV VARS CONFIGURATION BEGIN
