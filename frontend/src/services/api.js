@@ -68,7 +68,13 @@ export const authAPI = {
 // Student API (Public)
 export const studentAPI = {
   // Get student by ID
-  getById: (studentId) => api.get(`/students/${encodeURIComponent(studentId)}`),
+  getById: (studentId) => {
+    // Add timestamp to prevent caching
+    const timestamp = new Date().getTime();
+    return api.get(
+      `/students/${encodeURIComponent(studentId)}?_t=${timestamp}`,
+    );
+  },
 
   // Search students
   search: (query, filters = {}) => {
