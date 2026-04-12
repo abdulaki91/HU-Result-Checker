@@ -99,6 +99,7 @@ class ExcelService {
   }
 
   async processSheet(workbook, sheetName, uploadedBy) {
+    console.log(`  ⭐⭐⭐ PROCESSSHEET CALLED - NEW CODE VERSION ⭐⭐⭐`);
     console.log(`  📋 Reading sheet data...`);
     const worksheet = workbook.Sheets[sheetName];
     const jsonData = XLSX.utils.sheet_to_json(worksheet, {
