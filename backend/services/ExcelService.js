@@ -174,6 +174,15 @@ class ExcelService {
       throw validationError;
     }
 
+    // Detect assessment configuration from first data row with marks
+    console.log(`  🚀 CALLING detectAndCreateAssessmentConfig...`);
+    await this.detectAndCreateAssessmentConfig(
+      dataRows,
+      columnMapping,
+      sheetName,
+    );
+    console.log(`  ✅ detectAndCreateAssessmentConfig completed`);
+
     const students = [];
     const errors = [];
 
@@ -854,6 +863,115 @@ class ExcelService {
     return isNaN(numValue)
       ? defaultValue
       : Math.max(0, Math.min(100, numValue));
+  }
+
+  /**
+   * Detect assessment configuration from Excel data and create/activate it
+   */
+  async detectAndCreateAssessmentConfig(dataRows, columnMapping, sheetName) {
+    try {
+      console.log(`  🔍 Detecting assessment configuration from data...`);
+
+      // Find first row with all mark values
+      let sampleMarks = null;
+      for (const row of dataRows) {
+        const quiz = this.getNumericValue(row, columnMapping.quiz, 0);
+        const midterm = this.getNumericValue(row, columnMapping.midterm, 0);
+        const assignment = this.getNumericValue(
+          row,
+          columnMapping.assignment,
+          0,
+        );
+        const project = this.getNumericValue(row, columnMapping.project, 0);
+        const final = this.getNumericValue(row, columnMapping.final, 0);
+
+        // If we have at least 3 non-zero marks, use this as sample
+        const nonZeroCount = [quiz, midterm, assignment, project, final].filter(
+          (m) => m > 0,
+        ).length;
+        if (nonZeroCount >= 3) {
+          sampleMarks = { quiz, midterm, assignment, project, final };
+          console.log(`  📊 Sample marks found:`, sampleMarks);
+          break;
+        }
+      }
+
+      if (!sampleMarks) {
+        console.log(`  ⚠️ No sample marks found, using default configuration`);
+        return;
+      }
+
+      // Calculate total and percentages
+      const total =
+        sampleMarks.quiz +
+        sampleMarks.midterm +
+        sampleMarks.assignment +
+        sampleMarks.project +
+        sampleMarks.final;
+
+      if (total === 0) {
+        console.log(`  ⚠️ Total marks is 0, using default configuration`);
+        return;
+      }
+
+      const detectedConfig = {
+        quizWeight: parseFloat(((sampleMarks.quiz / total) * 100).toFixed(2)),
+        midtermWeight: parseFloat(
+          ((sampleMarks.midterm / total) * 100).toFixed(2),
+        ),
+        assignmentWeight: parseFloat(
+          ((sampleMarks.assignment / total) * 100).toFixed(2),
+        ),
+        projectWeight: parseFloat(
+          ((sampleMarks.project / total) * 100).toFixed(2),
+        ),
+        finalWeight: parseFloat(((sampleMarks.final / total) * 100).toFixed(2)),
+        quizMaxMarks: sampleMarks.quiz,
+        midtermMaxMarks: sampleMarks.midterm,
+        assignmentMaxMarks: sampleMarks.assignment,
+        projectMaxMarks: sampleMarks.project,
+        finalMaxMarks: sampleMarks.final,
+      };
+
+      console.log(`  📐 Detected configuration:`, detectedConfig);
+
+      // Check if this configuration already exists
+      const { AssessmentConfig } = require("../models");
+
+      // Create a unique config name based on the weightings
+      const configName = `auto-${detectedConfig.quizWeight}-${detectedConfig.midtermWeight}-${detectedConfig.assignmentWeight}-${detectedConfig.projectWeight}-${detectedConfig.finalWeight}`;
+
+      let existingConfig = await AssessmentConfig.findOne({
+        where: { configName },
+      });
+
+      if (existingConfig) {
+        console.log(`  ✅ Configuration already exists: ${configName}`);
+        // Set as active
+        if (!existingConfig.isActive) {
+          existingConfig.isActive = true;
+          await existingConfig.save();
+          console.log(`  ✅ Activated existing configuration`);
+        }
+      } else {
+        // Create new configuration
+        console.log(
+          `  📝 Creating new assessment configuration: ${configName}`,
+        );
+        const newConfig = await AssessmentConfig.create({
+          configName,
+          description: `Auto-detected from ${sheetName} (Quiz ${detectedConfig.quizWeight}%, Midterm ${detectedConfig.midtermWeight}%, Assignment ${detectedConfig.assignmentWeight}%, Project ${detectedConfig.projectWeight}%, Final ${detectedConfig.finalWeight}%)`,
+          isActive: true,
+          ...detectedConfig,
+        });
+        console.log(
+          `  ✅ Created and activated new configuration: ${configName}`,
+        );
+      }
+    } catch (error) {
+      console.error(`  ⚠️ Failed to detect assessment config:`, error.message);
+      console.log(`  ℹ️ Continuing with default configuration`);
+    }
   }
 }
 

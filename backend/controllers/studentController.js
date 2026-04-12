@@ -134,6 +134,20 @@ const getStudentById = async (req, res) => {
     const { columns: visibleStudentColumns, settings: columnSettings } =
       await getVisibleColumns();
 
+    // Get active assessment configuration
+    const { AssessmentConfig } = require("../models");
+    const assessmentConfig = await AssessmentConfig.getActive();
+
+    console.log("📊 Active Assessment Config:", {
+      id: assessmentConfig.id,
+      name: assessmentConfig.configName,
+      quiz: assessmentConfig.quizWeight,
+      midterm: assessmentConfig.midtermWeight,
+      assignment: assessmentConfig.assignmentWeight,
+      project: assessmentConfig.projectWeight,
+      final: assessmentConfig.finalWeight,
+    });
+
     // First try exact match
     student = await Student.findOne({
       where: { studentId: searchId },
@@ -280,6 +294,28 @@ const getStudentById = async (req, res) => {
           ["marks", "calculated"].includes(col.columnType) ||
           ["student_info"].includes(col.columnType),
       ),
+      assessmentConfig: {
+        quiz: {
+          weight: parseFloat(assessmentConfig.quizWeight),
+          maxMarks: parseFloat(assessmentConfig.quizMaxMarks),
+        },
+        midterm: {
+          weight: parseFloat(assessmentConfig.midtermWeight),
+          maxMarks: parseFloat(assessmentConfig.midtermMaxMarks),
+        },
+        assignment: {
+          weight: parseFloat(assessmentConfig.assignmentWeight),
+          maxMarks: parseFloat(assessmentConfig.assignmentMaxMarks),
+        },
+        project: {
+          weight: parseFloat(assessmentConfig.projectWeight),
+          maxMarks: parseFloat(assessmentConfig.projectMaxMarks),
+        },
+        final: {
+          weight: parseFloat(assessmentConfig.finalWeight),
+          maxMarks: parseFloat(assessmentConfig.finalMaxMarks),
+        },
+      },
       viewInfo: {
         viewCount: newViewCount,
         maxViews: device.maxViews,

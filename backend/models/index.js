@@ -4,6 +4,7 @@ const { Student, Course } = require("./Student");
 const ColumnSetting = require("./ColumnSetting");
 const DeviceView = require("./DeviceView");
 const DeviceViewHistory = require("./DeviceViewHistory");
+const AssessmentConfig = require("./AssessmentConfig");
 
 // Define associations
 User.hasMany(Student, { foreignKey: "uploadedBy", as: "uploadedStudents" });
@@ -99,7 +100,7 @@ const initializeDefaultColumnSettings = async () => {
         // Marks
         {
           columnKey: "quiz",
-          columnName: "Quiz (5%)",
+          columnName: "Quiz",
           isVisible: true,
           displayOrder: 8,
           isRequired: false,
@@ -108,7 +109,7 @@ const initializeDefaultColumnSettings = async () => {
         },
         {
           columnKey: "midterm",
-          columnName: "Mid (30%)",
+          columnName: "Midterm",
           isVisible: true,
           displayOrder: 9,
           isRequired: false,
@@ -117,7 +118,7 @@ const initializeDefaultColumnSettings = async () => {
         },
         {
           columnKey: "assignment",
-          columnName: "Assignment (15%)",
+          columnName: "Assignment",
           isVisible: true,
           displayOrder: 10,
           isRequired: false,
@@ -126,7 +127,7 @@ const initializeDefaultColumnSettings = async () => {
         },
         {
           columnKey: "project",
-          columnName: "Project (20%)",
+          columnName: "Project",
           isVisible: true,
           displayOrder: 11,
           isRequired: false,
@@ -135,7 +136,7 @@ const initializeDefaultColumnSettings = async () => {
         },
         {
           columnKey: "final",
-          columnName: "Final (50%)",
+          columnName: "Final",
           isVisible: true,
           displayOrder: 12,
           isRequired: false,
@@ -226,5 +227,6 @@ module.exports = {
   ColumnSetting,
   DeviceView,
   DeviceViewHistory,
+  AssessmentConfig,
   syncDatabase,
 };

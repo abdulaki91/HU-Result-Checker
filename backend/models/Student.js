@@ -268,6 +268,15 @@ const Course = sequelize.define(
       defaultValue: 0,
       validate: { min: 0, max: 100 },
     },
+    // Assessment configuration used (for reference)
+    assessmentConfigId: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: "assessment_configs",
+        key: "id",
+      },
+    },
   },
   {
     tableName: "courses",

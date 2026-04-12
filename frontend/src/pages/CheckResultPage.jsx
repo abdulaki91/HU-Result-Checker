@@ -20,6 +20,7 @@ const CheckResultPage = () => {
   const [studentId, setStudentId] = useState("");
   const [student, setStudent] = useState(null);
   const [columnSettings, setColumnSettings] = useState([]);
+  const [assessmentConfig, setAssessmentConfig] = useState(null);
   const [viewInfo, setViewInfo] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showLoadingOverlay, setShowLoadingOverlay] = useState(false);
@@ -86,9 +87,14 @@ const CheckResultPage = () => {
       console.log("🔍 API Response:", response.data);
       console.log("📊 Column Settings received:", response.data.columnSettings);
       console.log("👁️ Visible Columns:", response.data.visibleColumns);
+      console.log(
+        "⚖️ Assessment Config received:",
+        response.data.assessmentConfig,
+      );
 
       setStudent(response.data.data);
       setColumnSettings(response.data.columnSettings || []);
+      setAssessmentConfig(response.data.assessmentConfig || null);
       setViewInfo(response.data.viewInfo || null);
 
       // Check if device got locked after this view
@@ -204,7 +210,7 @@ const CheckResultPage = () => {
     return setting ? setting.isVisible : false;
   };
 
-  // Get column display name
+  // Get column display name with weighting if available
   const getColumnDisplayName = (columnKey) => {
     if (!columnSettings || columnSettings.length === 0) {
       // Default display names
@@ -227,7 +233,20 @@ const CheckResultPage = () => {
     }
 
     const setting = columnSettings.find((col) => col.columnKey === columnKey);
-    return setting ? setting.columnName : columnKey;
+    let displayName = setting ? setting.columnName : columnKey;
+
+    // Add weighting info if available and it's a marks column
+    if (
+      assessmentConfig &&
+      ["quiz", "midterm", "assignment", "project", "final"].includes(columnKey)
+    ) {
+      const config = assessmentConfig[columnKey];
+      if (config) {
+        displayName = `${columnKey.charAt(0).toUpperCase() + columnKey.slice(1)} (${config.weight}%)`;
+      }
+    }
+
+    return displayName;
   };
 
   const getGradeColor = (grade) => {
