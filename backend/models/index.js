@@ -2,6 +2,7 @@ const { sequelize, testConnection } = require("../config/database");
 const User = require("./User");
 const { Student, Course } = require("./Student");
 const ColumnSetting = require("./ColumnSetting");
+const DeviceView = require("./DeviceView");
 
 // Define associations
 User.hasMany(Student, { foreignKey: "uploadedBy", as: "uploadedStudents" });
@@ -222,5 +223,6 @@ module.exports = {
   Student,
   Course,
   ColumnSetting,
+  DeviceView,
   syncDatabase,
 };

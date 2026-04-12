@@ -90,11 +90,37 @@ const getVisibleCourseColumns = async () => {
 const getStudentById = async (req, res) => {
   try {
     const { studentId } = req.params;
+    const deviceId = req.headers["x-device-id"]; // Device ID from frontend
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const userAgent = req.headers["user-agent"];
 
     if (!studentId) {
       return res.status(400).json({
         success: false,
         message: "Student ID is required",
+      });
+    }
+
+    if (!deviceId) {
+      return res.status(400).json({
+        success: false,
+        message: "Device identification required",
+      });
+    }
+
+    // Check device view limit
+    const { DeviceView } = require("../models");
+    const device = await DeviceView.getOrCreate(deviceId, ipAddress, userAgent);
+
+    // Check if device is locked
+    if (device.isDeviceLocked()) {
+      return res.status(403).json({
+        success: false,
+        message: "View limit exceeded for this device",
+        locked: true,
+        viewCount: device.viewCount,
+        maxViews: device.maxViews,
+        details: `This device has exceeded the maximum number of result views (${device.maxViews}). You cannot view any more student results from this device.`,
       });
     }
 
@@ -205,20 +231,8 @@ const getStudentById = async (req, res) => {
       });
     }
 
-    // Check if result viewing is locked
-    if (student.isResultLocked()) {
-      return res.status(403).json({
-        success: false,
-        message: "Result viewing is locked",
-        locked: true,
-        viewCount: student.viewCount,
-        maxViews: student.maxViews,
-        details: `You have exceeded the maximum number of views (${student.maxViews}). Please contact your administrator to reset your view count.`,
-      });
-    }
-
-    // Increment view count
-    const newViewCount = await student.incrementViewCount();
+    // Increment device view count (not per-student)
+    const newViewCount = await device.incrementView();
 
     const transcript = await student.getTranscript();
 
@@ -251,17 +265,18 @@ const getStudentById = async (req, res) => {
     res.json({
       success: true,
       data: transcript,
-      visibleColumns: visibleCourseColumns, // Include visible columns info for frontend
+      visibleColumns: visibleCourseColumns,
       columnSettings: columnSettings.filter(
         (col) =>
           ["marks", "calculated"].includes(col.columnType) ||
           ["student_info"].includes(col.columnType),
-      ), // Include relevant column settings for frontend
+      ),
       viewInfo: {
         viewCount: newViewCount,
-        maxViews: student.maxViews,
-        remainingViews: Math.max(0, student.maxViews - newViewCount),
-        isLocked: student.isResultLocked(),
+        maxViews: device.maxViews,
+        remainingViews: Math.max(0, device.maxViews - newViewCount),
+        isLocked: device.isDeviceLocked(),
+        message: `You have ${Math.max(0, device.maxViews - newViewCount)} view(s) remaining on this device`,
       },
     });
   } catch (error) {

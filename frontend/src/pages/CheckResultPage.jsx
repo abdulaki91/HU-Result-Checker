@@ -205,10 +205,10 @@ const CheckResultPage = () => {
                 </div>
                 <div className="flex-1">
                   <p className="text-sm text-blue-800">
-                    <span className="font-semibold">Important:</span> You can
-                    view your result up to 6 times only. After that, your access
-                    will be locked. Please save or print your result when
-                    viewing.
+                    <span className="font-semibold">Important:</span> This
+                    device can view student results up to 6 times total. After
+                    that, access will be locked for this device. Please save or
+                    print results when viewing.
                   </p>
                 </div>
               </div>
