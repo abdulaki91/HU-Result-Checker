@@ -5,11 +5,17 @@ import {
   GraduationCap,
   Menu,
   X,
-  Search,
-  User,
   LogOut,
   Settings,
   BarChart3,
+  Users,
+  Upload,
+  Home,
+  Search as SearchIcon,
+  FileText,
+  Shield,
+  Smartphone,
+  Sliders,
 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 
@@ -22,20 +28,27 @@ const Navbar = () => {
   const handleLogout = async () => {
     await logout();
     navigate("/");
+    setIsOpen(false);
   };
 
   const navLinks = [
-    { to: "/", label: "Home", public: true },
-    { to: "/check-result", label: "Check Result", public: true },
-    { to: "/search", label: "Search", public: true },
+    { to: "/", label: "Home", icon: Home, public: true },
+    {
+      to: "/check-result",
+      label: "Check Result",
+      icon: FileText,
+      public: true,
+    },
+    { to: "/search", label: "Search", icon: SearchIcon, public: true },
   ];
 
   const adminLinks = [
     { to: "/admin", label: "Dashboard", icon: BarChart3 },
-    { to: "/admin/students", label: "Students", icon: User },
-    { to: "/admin/upload", label: "Upload", icon: Settings },
+    { to: "/admin/students", label: "Students", icon: Users },
+    { to: "/admin/upload", label: "Upload", icon: Upload },
+    { to: "/admin/devices", label: "Devices", icon: Smartphone },
     { to: "/admin/statistics", label: "Statistics", icon: BarChart3 },
-    { to: "/admin/column-settings", label: "Column Settings", icon: Settings },
+    { to: "/admin/column-settings", label: "Settings", icon: Sliders },
   ];
 
   const isActive = (path) => {
@@ -46,48 +59,61 @@ const Navbar = () => {
   };
 
   return (
-    <nav className="bg-white shadow-lg sticky top-0 z-50">
+    <nav className="bg-white/80 backdrop-blur-xl shadow-lg sticky top-0 z-50 border-b border-gray-100">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
-          <Link to="/" className="flex items-center space-x-2 group">
-            <div className="p-2 bg-gradient-to-r from-primary-500 to-indigo-600 rounded-xl group-hover:scale-105 transition-transform">
+          <Link to="/" className="flex items-center space-x-3 group">
+            <motion.div
+              whileHover={{ scale: 1.05, rotate: 5 }}
+              whileTap={{ scale: 0.95 }}
+              className="p-2.5 bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 rounded-2xl shadow-lg group-hover:shadow-xl transition-all duration-300"
+            >
               <GraduationCap className="h-6 w-6 text-white" />
+            </motion.div>
+            <div className="hidden sm:block">
+              <span className="text-xl font-bold bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                Student Results
+              </span>
+              <p className="text-xs text-gray-500 font-medium">
+                Management System
+              </p>
             </div>
-            <span className="text-xl font-bold text-gray-900 hidden sm:block">
-              Student Results
-            </span>
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-8">
-            {navLinks.map((link) => (
-              <Link
-                key={link.to}
-                to={link.to}
-                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  isActive(link.to)
-                    ? "text-primary-600 bg-primary-50"
-                    : "text-gray-700 hover:text-primary-600 hover:bg-gray-50"
-                }`}
-              >
-                {link.label}
-              </Link>
-            ))}
+          <div className="hidden lg:flex items-center space-x-2">
+            {navLinks.map((link) => {
+              const Icon = link.icon;
+              return (
+                <Link
+                  key={link.to}
+                  to={link.to}
+                  className={`flex items-center px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 ${
+                    isActive(link.to)
+                      ? "text-white bg-gradient-to-r from-blue-600 to-indigo-600 shadow-md"
+                      : "text-gray-700 hover:text-indigo-600 hover:bg-indigo-50"
+                  }`}
+                >
+                  <Icon className="h-4 w-4 mr-2" />
+                  {link.label}
+                </Link>
+              );
+            })}
 
-            {/* Admin Links - Direct Navigation */}
+            {/* Admin Dropdown or Direct Links */}
             {isAuthenticated && user?.role === "admin" && (
-              <>
-                {adminLinks.map((link) => {
+              <div className="flex items-center space-x-2 ml-2 pl-2 border-l border-gray-200">
+                {adminLinks.slice(0, 3).map((link) => {
                   const Icon = link.icon;
                   return (
                     <Link
                       key={link.to}
                       to={link.to}
-                      className={`flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      className={`flex items-center px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 ${
                         isActive(link.to)
-                          ? "text-primary-600 bg-primary-50"
-                          : "text-gray-700 hover:text-primary-600 hover:bg-gray-50"
+                          ? "text-white bg-gradient-to-r from-purple-600 to-pink-600 shadow-md"
+                          : "text-gray-700 hover:text-purple-600 hover:bg-purple-50"
                       }`}
                     >
                       <Icon className="h-4 w-4 mr-2" />
@@ -95,42 +121,79 @@ const Navbar = () => {
                     </Link>
                   );
                 })}
-              </>
+              </div>
             )}
 
             {/* Auth Section */}
             {isAuthenticated ? (
-              <div className="flex items-center space-x-3">
-                <div className="flex items-center space-x-2 px-3 py-2 bg-gray-50 rounded-lg">
-                  <div className="w-8 h-8 bg-gradient-to-r from-primary-500 to-indigo-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
+              <div className="flex items-center space-x-3 ml-4">
+                <div className="flex items-center space-x-3 px-4 py-2 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl border border-gray-200">
+                  <div className="w-9 h-9 bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 rounded-xl flex items-center justify-center text-white text-sm font-bold shadow-md">
                     {getUserInitials()}
                   </div>
-                  <span className="text-sm font-medium text-gray-700">
-                    {user?.fullName}
-                  </span>
+                  <div className="hidden xl:block">
+                    <p className="text-sm font-bold text-gray-900">
+                      {user?.fullName}
+                    </p>
+                    <p className="text-xs text-gray-500 capitalize">
+                      {user?.role}
+                    </p>
+                  </div>
                 </div>
-                <button
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
                   onClick={handleLogout}
-                  className="flex items-center px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                  className="flex items-center px-4 py-2 text-sm font-semibold text-red-600 hover:text-white hover:bg-red-600 rounded-xl transition-all duration-200 border-2 border-red-200 hover:border-red-600"
                 >
                   <LogOut className="h-4 w-4 mr-2" />
-                  Logout
-                </button>
+                  <span className="hidden xl:inline">Logout</span>
+                </motion.button>
               </div>
             ) : (
-              <Link to="/admin/login" className="btn-primary">
-                Admin Login
+              <Link to="/admin/login">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="flex items-center px-6 py-2.5 ml-4 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white text-sm font-bold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+                >
+                  <Shield className="h-4 w-4 mr-2" />
+                  Admin Login
+                </motion.button>
               </Link>
             )}
           </div>
 
           {/* Mobile menu button */}
-          <button
+          <motion.button
+            whileTap={{ scale: 0.9 }}
             onClick={() => setIsOpen(!isOpen)}
-            className="md:hidden p-2 rounded-lg text-gray-700 hover:bg-gray-50"
+            className="lg:hidden p-2.5 rounded-xl text-gray-700 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 hover:text-indigo-600 transition-all duration-200"
           >
-            {isOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-          </button>
+            <AnimatePresence mode="wait">
+              {isOpen ? (
+                <motion.div
+                  key="close"
+                  initial={{ rotate: -90, opacity: 0 }}
+                  animate={{ rotate: 0, opacity: 1 }}
+                  exit={{ rotate: 90, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <X className="h-6 w-6" />
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="menu"
+                  initial={{ rotate: 90, opacity: 0 }}
+                  animate={{ rotate: 0, opacity: 1 }}
+                  exit={{ rotate: -90, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <Menu className="h-6 w-6" />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.button>
         </div>
 
         {/* Mobile Navigation */}
@@ -140,81 +203,124 @@ const Navbar = () => {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
-              className="md:hidden border-t border-gray-200"
+              transition={{ duration: 0.3 }}
+              className="lg:hidden border-t border-gray-100 overflow-hidden"
             >
-              <div className="py-4 space-y-2">
-                {navLinks.map((link) => (
-                  <Link
-                    key={link.to}
-                    to={link.to}
-                    onClick={() => setIsOpen(false)}
-                    className={`block px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      isActive(link.to)
-                        ? "text-primary-600 bg-primary-50"
-                        : "text-gray-700 hover:text-primary-600 hover:bg-gray-50"
-                    }`}
-                  >
-                    {link.label}
-                  </Link>
-                ))}
+              <div className="py-4 space-y-1">
+                {/* Public Links */}
+                {navLinks.map((link, index) => {
+                  const Icon = link.icon;
+                  return (
+                    <motion.div
+                      key={link.to}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.05 }}
+                    >
+                      <Link
+                        to={link.to}
+                        onClick={() => setIsOpen(false)}
+                        className={`flex items-center px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 ${
+                          isActive(link.to)
+                            ? "text-white bg-gradient-to-r from-blue-600 to-indigo-600 shadow-md"
+                            : "text-gray-700 hover:text-indigo-600 hover:bg-indigo-50"
+                        }`}
+                      >
+                        <Icon className="h-5 w-5 mr-3" />
+                        {link.label}
+                      </Link>
+                    </motion.div>
+                  );
+                })}
 
                 {isAuthenticated ? (
                   <>
-                    <hr className="my-2" />
-
                     {/* Admin Links for Mobile */}
                     {user?.role === "admin" && (
-                      <div className="space-y-1 mb-3">
-                        {adminLinks.map((link) => {
+                      <>
+                        <div className="my-3 px-4">
+                          <div className="h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent" />
+                        </div>
+                        <div className="px-4 mb-2">
+                          <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+                            Admin Panel
+                          </p>
+                        </div>
+                        {adminLinks.map((link, index) => {
                           const Icon = link.icon;
                           return (
-                            <Link
+                            <motion.div
                               key={link.to}
-                              to={link.to}
-                              onClick={() => setIsOpen(false)}
-                              className={`flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                                isActive(link.to)
-                                  ? "text-primary-600 bg-primary-50"
-                                  : "text-gray-700 hover:text-primary-600 hover:bg-gray-50"
-                              }`}
+                              initial={{ opacity: 0, x: -20 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{
+                                delay: (navLinks.length + index) * 0.05,
+                              }}
                             >
-                              <Icon className="h-4 w-4 mr-3" />
-                              {link.label}
-                            </Link>
+                              <Link
+                                to={link.to}
+                                onClick={() => setIsOpen(false)}
+                                className={`flex items-center px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 ${
+                                  isActive(link.to)
+                                    ? "text-white bg-gradient-to-r from-purple-600 to-pink-600 shadow-md"
+                                    : "text-gray-700 hover:text-purple-600 hover:bg-purple-50"
+                                }`}
+                              >
+                                <Icon className="h-5 w-5 mr-3" />
+                                {link.label}
+                              </Link>
+                            </motion.div>
                           );
                         })}
-                      </div>
+                      </>
                     )}
 
-                    <div className="px-3 py-2">
-                      <div className="flex items-center space-x-2 mb-3 p-2 bg-gray-50 rounded-lg">
-                        <div className="w-8 h-8 bg-gradient-to-r from-primary-500 to-indigo-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
+                    <div className="my-3 px-4">
+                      <div className="h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent" />
+                    </div>
+
+                    {/* User Info */}
+                    <div className="px-4 py-3">
+                      <div className="flex items-center space-x-3 p-3 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl border border-gray-200">
+                        <div className="w-10 h-10 bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 rounded-xl flex items-center justify-center text-white text-sm font-bold shadow-md">
                           {getUserInitials()}
                         </div>
-                        <span className="text-sm font-medium text-gray-700">
-                          {user?.fullName}
-                        </span>
+                        <div className="flex-1">
+                          <p className="text-sm font-bold text-gray-900">
+                            {user?.fullName}
+                          </p>
+                          <p className="text-xs text-gray-500 capitalize">
+                            {user?.role}
+                          </p>
+                        </div>
                       </div>
 
-                      <button
+                      <motion.button
+                        whileTap={{ scale: 0.95 }}
                         onClick={handleLogout}
-                        className="flex items-center w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        className="flex items-center justify-center w-full mt-3 px-4 py-3 text-sm font-bold text-red-600 hover:text-white hover:bg-red-600 rounded-xl transition-all duration-200 border-2 border-red-200 hover:border-red-600"
                       >
-                        <LogOut className="h-4 w-4 mr-3" />
+                        <LogOut className="h-5 w-5 mr-2" />
                         Logout
-                      </button>
+                      </motion.button>
                     </div>
                   </>
                 ) : (
                   <>
-                    <hr className="my-2" />
-                    <Link
-                      to="/admin/login"
-                      onClick={() => setIsOpen(false)}
-                      className="block mx-3 btn-primary text-center"
-                    >
-                      Admin Login
-                    </Link>
+                    <div className="my-3 px-4">
+                      <div className="h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent" />
+                    </div>
+                    <div className="px-4">
+                      <Link to="/admin/login" onClick={() => setIsOpen(false)}>
+                        <motion.button
+                          whileTap={{ scale: 0.95 }}
+                          className="flex items-center justify-center w-full px-6 py-3 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white text-sm font-bold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+                        >
+                          <Shield className="h-5 w-5 mr-2" />
+                          Admin Login
+                        </motion.button>
+                      </Link>
+                    </div>
                   </>
                 )}
               </div>

@@ -10,6 +10,10 @@ const {
   bulkDelete,
   clearAllStudents,
   resetStudentViewCount,
+  getLockedDevices,
+  unlockDevice,
+  unlockAllDevices,
+  deleteDevice,
 } = require("../controllers/adminController");
 const {
   uploadExcel: uploadMiddleware,
@@ -209,6 +213,36 @@ router.get("/sample-files/:type", (req, res) => {
 // @route   POST /api/admin/students/:studentId/reset-view-count
 // @desc    Reset student view count
 // @access  Private/Admin
-router.post("/:studentId/reset-view-count", resetStudentViewCount);
+router.post("/students/:studentId/reset-view-count", resetStudentViewCount);
+
+// Device Management Routes
+
+// @route   GET /api/admin/devices
+// @desc    Get all devices (locked and unlocked)
+// @access  Private/Admin
+router.get("/devices", paginationValidation, getLockedDevices);
+
+// @route   POST /api/admin/devices/:deviceId/unlock
+// @desc    Unlock a specific device
+// @access  Private/Admin
+router.post(
+  "/devices/:deviceId/unlock",
+  [param("deviceId").notEmpty().withMessage("Device ID is required")],
+  unlockDevice,
+);
+
+// @route   POST /api/admin/devices/unlock-all
+// @desc    Unlock all locked devices
+// @access  Private/Admin
+router.post("/devices/unlock-all", unlockAllDevices);
+
+// @route   DELETE /api/admin/devices/:deviceId
+// @desc    Delete a device record
+// @access  Private/Admin
+router.delete(
+  "/devices/:deviceId",
+  [param("deviceId").notEmpty().withMessage("Device ID is required")],
+  deleteDevice,
+);
 
 module.exports = router;

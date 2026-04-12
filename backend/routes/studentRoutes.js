@@ -5,6 +5,7 @@ const {
   searchStudents,
   getFilters,
   validateStudentId,
+  checkDeviceStatus,
 } = require("../controllers/studentController");
 
 const router = express.Router();
@@ -43,6 +44,11 @@ const searchValidation = [
 // @desc    Get available departments and batches for filtering
 // @access  Public
 router.get("/filters", getFilters);
+
+// @route   GET /api/device/status
+// @desc    Check device lock status
+// @access  Public
+router.get("/device/status", checkDeviceStatus);
 
 // @route   GET /api/students/search
 // @desc    Search students by name or ID

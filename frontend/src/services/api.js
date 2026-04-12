@@ -82,6 +82,9 @@ export const studentAPI = {
   // Validate student ID
   validateId: (studentId) =>
     api.get(`/students/validate/${encodeURIComponent(studentId)}`),
+
+  // Check device lock status
+  checkDeviceStatus: () => api.get("/students/device/status"),
 };
 
 // Admin API (Protected)
@@ -134,6 +137,20 @@ export const adminAPI = {
   // Reset student view count
   resetStudentViewCount: (studentId) =>
     api.post(`/admin/students/${studentId}/reset-view-count`),
+
+  // Device management
+  getDevices: (params = {}) => {
+    const searchParams = new URLSearchParams(params);
+    return api.get(`/admin/devices?${searchParams}`);
+  },
+
+  unlockDevice: (deviceId) =>
+    api.post(`/admin/devices/${encodeURIComponent(deviceId)}/unlock`),
+
+  unlockAllDevices: () => api.post("/admin/devices/unlock-all"),
+
+  deleteDevice: (deviceId) =>
+    api.delete(`/admin/devices/${encodeURIComponent(deviceId)}`),
 };
 
 // Column Settings API (Protected)

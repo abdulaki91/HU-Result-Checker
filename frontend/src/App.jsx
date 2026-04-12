@@ -16,6 +16,7 @@ import StudentsPage from "./pages/admin/StudentsPage";
 import UploadPage from "./pages/admin/UploadPage";
 import StatisticsPage from "./pages/admin/StatisticsPage";
 import ColumnSettingsPage from "./pages/admin/ColumnSettingsPage";
+import DeviceManagementPage from "./pages/admin/DeviceManagementPage";
 
 // Protected Route Component
 import ProtectedRoute from "./components/auth/ProtectedRoute";
@@ -85,6 +86,14 @@ function App() {
                   element={
                     <ProtectedRoute>
                       <ColumnSettingsPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/admin/devices"
+                  element={
+                    <ProtectedRoute>
+                      <DeviceManagementPage />
                     </ProtectedRoute>
                   }
                 />

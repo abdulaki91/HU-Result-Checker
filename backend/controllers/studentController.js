@@ -112,7 +112,7 @@ const getStudentById = async (req, res) => {
     const { DeviceView } = require("../models");
     const device = await DeviceView.getOrCreate(deviceId, ipAddress, userAgent);
 
-    // Check if device is locked
+    // Check if device is locked BEFORE any operations
     if (device.isDeviceLocked()) {
       return res.status(403).json({
         success: false,
@@ -120,7 +120,8 @@ const getStudentById = async (req, res) => {
         locked: true,
         viewCount: device.viewCount,
         maxViews: device.maxViews,
-        details: `This device has exceeded the maximum number of result views (${device.maxViews}). You cannot view any more student results from this device.`,
+        remainingViews: 0,
+        details: `This device has exceeded the maximum number of result views (${device.maxViews}). Contact your administrator to reset the view count.`,
       });
     }
 
@@ -234,6 +235,14 @@ const getStudentById = async (req, res) => {
     // Increment device view count (not per-student)
     const newViewCount = await device.incrementView();
 
+    // Log this view in history
+    const { DeviceViewHistory } = require("../models");
+    await DeviceViewHistory.logView(deviceId, student.studentId, ipAddress);
+
+    // Double-check if device got locked after increment
+    const remainingViews = Math.max(0, device.maxViews - newViewCount);
+    const isNowLocked = device.isDeviceLocked();
+
     const transcript = await student.getTranscript();
 
     // Filter course data based on visible columns
@@ -274,9 +283,11 @@ const getStudentById = async (req, res) => {
       viewInfo: {
         viewCount: newViewCount,
         maxViews: device.maxViews,
-        remainingViews: Math.max(0, device.maxViews - newViewCount),
-        isLocked: device.isDeviceLocked(),
-        message: `You have ${Math.max(0, device.maxViews - newViewCount)} view(s) remaining on this device`,
+        remainingViews: remainingViews,
+        isLocked: isNowLocked,
+        message: isNowLocked
+          ? `This was your last view. This device is now locked.`
+          : `You have ${remainingViews} view(s) remaining on this device`,
       },
     });
   } catch (error) {
@@ -483,9 +494,65 @@ const validateStudentId = async (req, res) => {
   }
 };
 
+// Check device lock status (public endpoint)
+const checkDeviceStatus = async (req, res) => {
+  try {
+    const deviceId = req.headers["x-device-id"];
+    const ipAddress = req.ip || req.connection.remoteAddress;
+
+    if (!deviceId) {
+      return res.status(400).json({
+        success: false,
+        message: "Device identification required",
+      });
+    }
+
+    const { DeviceView } = require("../models");
+
+    // Try to find existing device
+    const device = await DeviceView.findOne({
+      where: { deviceId },
+    });
+
+    if (!device) {
+      // Device not found, it's not locked
+      return res.json({
+        success: true,
+        isLocked: false,
+        viewCount: 0,
+        maxViews: 6,
+        remainingViews: 6,
+        message: "Device is not locked",
+      });
+    }
+
+    const isLocked = device.isDeviceLocked();
+    const remainingViews = Math.max(0, device.maxViews - device.viewCount);
+
+    res.json({
+      success: true,
+      isLocked: isLocked,
+      viewCount: device.viewCount,
+      maxViews: device.maxViews,
+      remainingViews: remainingViews,
+      message: isLocked
+        ? "Device is locked. Contact administrator to reset."
+        : `Device has ${remainingViews} view(s) remaining`,
+    });
+  } catch (error) {
+    console.error("Check device status error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to check device status",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
+  }
+};
+
 module.exports = {
   getStudentById,
   searchStudents,
   getFilters,
   validateStudentId,
+  checkDeviceStatus,
 };

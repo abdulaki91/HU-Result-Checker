@@ -61,15 +61,21 @@ const DeviceView = sequelize.define(
 
 // Instance method to check if device is locked
 DeviceView.prototype.isDeviceLocked = function () {
-  return this.isLocked || this.viewCount >= this.maxViews;
+  // Device is locked if explicitly locked OR if view count has reached/exceeded max
+  return this.isLocked === true || this.viewCount >= this.maxViews;
 };
 
 // Instance method to increment view count
 DeviceView.prototype.incrementView = async function () {
+  // Don't increment if already locked
+  if (this.isDeviceLocked()) {
+    return this.viewCount;
+  }
+
   this.viewCount += 1;
   this.lastViewedAt = new Date();
 
-  // Lock if max views reached
+  // Lock if max views reached or exceeded
   if (this.viewCount >= this.maxViews) {
     this.isLocked = true;
   }
@@ -91,6 +97,13 @@ DeviceView.getOrCreate = async function (deviceId, ipAddress, userAgent) {
       isLocked: false,
     },
   });
+
+  // If device exists, update IP and user agent
+  if (!created) {
+    device.ipAddress = ipAddress;
+    device.userAgent = userAgent;
+    await device.save();
+  }
 
   return device;
 };

@@ -3,6 +3,7 @@ const User = require("./User");
 const { Student, Course } = require("./Student");
 const ColumnSetting = require("./ColumnSetting");
 const DeviceView = require("./DeviceView");
+const DeviceViewHistory = require("./DeviceViewHistory");
 
 // Define associations
 User.hasMany(Student, { foreignKey: "uploadedBy", as: "uploadedStudents" });
@@ -224,5 +225,6 @@ module.exports = {
   Course,
   ColumnSetting,
   DeviceView,
+  DeviceViewHistory,
   syncDatabase,
 };

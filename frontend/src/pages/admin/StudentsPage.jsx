@@ -16,6 +16,7 @@ import LoadingSpinner, {
 } from "../../components/common/LoadingSpinner";
 import toast from "react-hot-toast";
 import EditStudentModal from "../../components/admin/EditStudentModal";
+import ConfirmModal from "../../components/common/ConfirmModal";
 
 const StudentsPage = () => {
   const [students, setStudents] = useState([]);
@@ -28,6 +29,14 @@ const StudentsPage = () => {
   const [filters, setFilters] = useState({ departments: [], batches: [] });
   const [editingStudent, setEditingStudent] = useState(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    type: "warning",
+    title: "",
+    message: "",
+    onConfirm: null,
+  });
+  const [isConfirmLoading, setIsConfirmLoading] = useState(false);
 
   useEffect(() => {
     loadStudents();
@@ -80,37 +89,49 @@ const StudentsPage = () => {
   };
 
   const handleResetViewCount = async (studentId, studentName) => {
-    if (
-      !window.confirm(
-        `Are you sure you want to reset the view count for ${studentName}?`,
-      )
-    ) {
-      return;
-    }
-
-    try {
-      await adminAPI.resetStudentViewCount(studentId);
-      toast.success("View count reset successfully");
-      loadStudents(); // Reload the students list
-    } catch (error) {
-      const errorMessage = handleApiError(error);
-      toast.error(errorMessage);
-    }
+    setConfirmModal({
+      isOpen: true,
+      type: "warning",
+      title: "Reset View Count",
+      message: `Are you sure you want to reset the view count for ${studentName}? This will unlock the student's record and reset all device view counts to zero.`,
+      onConfirm: async () => {
+        setIsConfirmLoading(true);
+        try {
+          await adminAPI.resetStudentViewCount(studentId);
+          toast.success("View count reset successfully");
+          loadStudents();
+          setConfirmModal({ ...confirmModal, isOpen: false });
+        } catch (error) {
+          const errorMessage = handleApiError(error);
+          toast.error(errorMessage);
+        } finally {
+          setIsConfirmLoading(false);
+        }
+      },
+    });
   };
 
   const handleDelete = async (studentId, studentName) => {
-    if (!window.confirm(`Are you sure you want to delete ${studentName}?`)) {
-      return;
-    }
-
-    try {
-      await adminAPI.deleteStudent(studentId);
-      toast.success("Student deleted successfully");
-      loadStudents();
-    } catch (error) {
-      const errorMessage = handleApiError(error);
-      toast.error(errorMessage);
-    }
+    setConfirmModal({
+      isOpen: true,
+      type: "danger",
+      title: "Delete Student",
+      message: `Are you sure you want to delete ${studentName}? This action cannot be undone and will permanently remove all associated data.`,
+      onConfirm: async () => {
+        setIsConfirmLoading(true);
+        try {
+          await adminAPI.deleteStudent(studentId);
+          toast.success("Student deleted successfully");
+          loadStudents();
+          setConfirmModal({ ...confirmModal, isOpen: false });
+        } catch (error) {
+          const errorMessage = handleApiError(error);
+          toast.error(errorMessage);
+        } finally {
+          setIsConfirmLoading(false);
+        }
+      },
+    });
   };
 
   const getStatusColor = (status) => {
@@ -428,6 +449,19 @@ const StudentsPage = () => {
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
         onSuccess={handleEditSuccess}
+      />
+
+      {/* Confirm Modal */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        type={confirmModal.type}
+        isLoading={isConfirmLoading}
+        confirmText={confirmModal.type === "danger" ? "Delete" : "Reset"}
+        cancelText="Cancel"
       />
     </div>
   );

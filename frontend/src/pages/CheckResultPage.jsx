@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search,
@@ -23,12 +23,59 @@ const CheckResultPage = () => {
   const [viewInfo, setViewInfo] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showLoadingOverlay, setShowLoadingOverlay] = useState(false);
+  const [isDeviceLocked, setIsDeviceLocked] = useState(false);
+  const [lockData, setLockData] = useState(null);
+
+  // Check if device is locked on component mount
+  useEffect(() => {
+    const checkDeviceLock = async () => {
+      try {
+        // Check with backend for current device status
+        const response = await studentAPI.checkDeviceStatus();
+        const { isLocked, viewCount, maxViews } = response.data;
+
+        if (isLocked) {
+          // Device is locked on backend
+          setIsDeviceLocked(true);
+          const lockInfo = {
+            viewCount,
+            maxViews,
+            lockedAt: new Date().toISOString(),
+          };
+          localStorage.setItem("deviceLocked", "true");
+          localStorage.setItem("deviceLockData", JSON.stringify(lockInfo));
+          setLockData(lockInfo);
+        } else {
+          // Device is not locked, clear any stale localStorage data
+          localStorage.removeItem("deviceLocked");
+          localStorage.removeItem("deviceLockData");
+          setIsDeviceLocked(false);
+          setLockData(null);
+        }
+      } catch (error) {
+        console.error("Error checking device status:", error);
+        // On error, clear localStorage to be safe
+        localStorage.removeItem("deviceLocked");
+        localStorage.removeItem("deviceLockData");
+        setIsDeviceLocked(false);
+        setLockData(null);
+      }
+    };
+
+    checkDeviceLock();
+  }, []);
 
   const handleSearch = async (e) => {
     e.preventDefault();
 
     if (!studentId.trim()) {
       toast.error("Please enter a student ID");
+      return;
+    }
+
+    // Check if device is locked before making request
+    if (isDeviceLocked) {
+      toast.error("This device is locked. Contact administrator to reset.");
       return;
     }
 
@@ -43,17 +90,45 @@ const CheckResultPage = () => {
       setStudent(response.data.data);
       setColumnSettings(response.data.columnSettings || []);
       setViewInfo(response.data.viewInfo || null);
-      toast.success("Student result found!");
+
+      // Check if device got locked after this view
+      if (response.data.viewInfo?.isLocked) {
+        setIsDeviceLocked(true);
+        const lockInfo = {
+          viewCount: response.data.viewInfo.viewCount,
+          maxViews: response.data.viewInfo.maxViews,
+          lockedAt: new Date().toISOString(),
+        };
+        localStorage.setItem("deviceLocked", "true");
+        localStorage.setItem("deviceLockData", JSON.stringify(lockInfo));
+        setLockData(lockInfo);
+        toast.error("This was your last view. Device is now locked.");
+      } else {
+        toast.success("Student result found!");
+      }
     } catch (error) {
       const errorMessage = handleApiError(error);
 
       // Check if it's a locked result error
       if (error.response?.status === 403 && error.response?.data?.locked) {
-        const lockData = error.response.data;
-        toast.error(lockData.message);
+        const lockDataFromServer = error.response.data;
+        toast.error(lockDataFromServer.message);
+
+        // Store lock status in localStorage
+        setIsDeviceLocked(true);
+        const lockInfo = {
+          viewCount: lockDataFromServer.viewCount,
+          maxViews: lockDataFromServer.maxViews,
+          lockedAt: new Date().toISOString(),
+          details: lockDataFromServer.details,
+        };
+        localStorage.setItem("deviceLocked", "true");
+        localStorage.setItem("deviceLockData", JSON.stringify(lockInfo));
+        setLockData(lockInfo);
+
         setStudent({
           locked: true,
-          lockData: lockData,
+          lockData: lockDataFromServer,
         });
         setColumnSettings([]);
         setViewInfo(null);
@@ -285,12 +360,17 @@ const CheckResultPage = () => {
             <div className="sm:pt-7">
               <motion.button
                 type="submit"
-                disabled={isLoading || !studentId.trim()}
+                disabled={isLoading || !studentId.trim() || isDeviceLocked}
                 className="h-14 px-8 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white font-semibold text-base shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 flex items-center justify-center w-full sm:w-auto"
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
+                whileHover={{ scale: isDeviceLocked ? 1 : 1.02 }}
+                whileTap={{ scale: isDeviceLocked ? 1 : 0.98 }}
               >
-                {isLoading ? (
+                {isDeviceLocked ? (
+                  <>
+                    <Lock className="h-5 w-5 mr-2" />
+                    Device Locked
+                  </>
+                ) : isLoading ? (
                   <div className="flex items-center">
                     <motion.div
                       animate={{ rotate: 360 }}
@@ -318,7 +398,7 @@ const CheckResultPage = () => {
 
         {/* View Count Warning */}
         <AnimatePresence>
-          {viewInfo && !student?.locked && (
+          {viewInfo && !student?.locked && !isDeviceLocked && (
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -364,7 +444,7 @@ const CheckResultPage = () => {
                           : "text-blue-900"
                     }`}
                   >
-                    Result View Limit: {viewInfo.viewCount}/{viewInfo.maxViews}{" "}
+                    Device View Limit: {viewInfo.viewCount}/{viewInfo.maxViews}{" "}
                     views used
                   </p>
                   <p
@@ -376,9 +456,12 @@ const CheckResultPage = () => {
                           : "text-blue-700"
                     }`}
                   >
-                    {viewInfo.remainingViews > 0
-                      ? `${viewInfo.remainingViews} views remaining. After ${viewInfo.maxViews} views, you'll need to contact admin to reset.`
-                      : "Maximum views reached. Contact admin to reset your view count."}
+                    {viewInfo.isLocked
+                      ? viewInfo.message ||
+                        "This device is now locked. Contact admin to reset."
+                      : viewInfo.remainingViews > 0
+                        ? `${viewInfo.remainingViews} view(s) remaining. After ${viewInfo.maxViews} views, this device will be locked.`
+                        : "Maximum views reached. This device is now locked."}
                   </p>
                 </div>
               </div>
@@ -388,7 +471,7 @@ const CheckResultPage = () => {
 
         {/* Locked Result Display */}
         <AnimatePresence>
-          {student?.locked && (
+          {(student?.locked || isDeviceLocked) && (
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -405,11 +488,12 @@ const CheckResultPage = () => {
                   <Lock className="h-12 w-12 text-red-600" />
                 </motion.div>
                 <h2 className="text-3xl font-display font-bold text-red-900 mb-4">
-                  Result Access Locked
+                  Device Locked
                 </h2>
                 <p className="text-lg text-red-700 mb-6 max-w-md mx-auto">
-                  {student.lockData?.details ||
-                    "You have exceeded the maximum number of result views."}
+                  {student?.lockData?.details ||
+                    lockData?.details ||
+                    "This device has exceeded the maximum number of result views."}
                 </p>
                 <div className="bg-white rounded-2xl p-6 mb-6 border-2 border-red-200 max-w-md mx-auto">
                   <div className="grid grid-cols-2 gap-6 text-base">
@@ -418,8 +502,11 @@ const CheckResultPage = () => {
                         Views Used:
                       </span>
                       <span className="text-2xl text-red-600 font-bold">
-                        {student.lockData?.viewCount || 0}/
-                        {student.lockData?.maxViews || 10}
+                        {student?.lockData?.viewCount ||
+                          lockData?.viewCount ||
+                          0}
+                        /
+                        {student?.lockData?.maxViews || lockData?.maxViews || 6}
                       </span>
                     </div>
                     <div>
@@ -437,8 +524,9 @@ const CheckResultPage = () => {
                     How to unlock:
                   </h3>
                   <p className="text-blue-800 text-sm leading-relaxed">
-                    Contact your system administrator to reset your result view
-                    count. Provide your Student ID for assistance.
+                    Contact your system administrator to reset your device view
+                    count. This lock persists even after page refresh for
+                    security.
                   </p>
                 </div>
               </div>

@@ -507,6 +507,244 @@ const resetStudentViewCount = async (req, res) => {
   }
 };
 
+// Get all locked devices
+const getLockedDevices = async (req, res) => {
+  try {
+    const { DeviceView, DeviceViewHistory } = require("../models");
+
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const offset = (page - 1) * limit;
+
+    const showAll = req.query.showAll === "true";
+    const studentId = req.query.studentId; // New: search by student ID
+
+    console.log("🔍 Device search params:", {
+      page,
+      limit,
+      showAll,
+      studentId,
+    });
+
+    let whereClause = {};
+
+    // If searching by student ID, find devices that viewed this student
+    if (studentId) {
+      console.log(`🔎 Searching for devices that viewed student: ${studentId}`);
+
+      const viewHistory =
+        await DeviceViewHistory.getDevicesByStudent(studentId);
+      console.log(`📊 Found ${viewHistory.length} view history records`);
+
+      const deviceIds = [...new Set(viewHistory.map((v) => v.deviceId))];
+      console.log(`📱 Unique device IDs: ${deviceIds.length}`, deviceIds);
+
+      if (deviceIds.length === 0) {
+        console.log(`❌ No devices found for student: ${studentId}`);
+        return res.json({
+          success: true,
+          data: [],
+          pagination: {
+            page,
+            limit,
+            totalPages: 0,
+            totalItems: 0,
+          },
+          searchInfo: {
+            studentId,
+            message: `No devices found that viewed student ID: ${studentId}`,
+          },
+        });
+      }
+
+      whereClause.deviceId = { [Op.in]: deviceIds };
+    } else if (!showAll) {
+      // Show only locked devices if not showing all and not searching by student
+      whereClause = {
+        [Op.or]: [
+          { isLocked: true },
+          { viewCount: { [Op.gte]: sequelize.col("maxViews") } },
+        ],
+      };
+    }
+
+    const { count, rows: devices } = await DeviceView.findAndCountAll({
+      where: whereClause,
+      order: [["lastViewedAt", "DESC"]],
+      offset,
+      limit,
+    });
+
+    // For ALL devices, add view history with student IDs
+    for (let device of devices) {
+      const history = await DeviceViewHistory.findAll({
+        where: {
+          deviceId: device.deviceId,
+        },
+        order: [["viewedAt", "DESC"]],
+        limit: 10, // Get last 10 views
+      });
+
+      // Extract unique student IDs
+      const studentIds = [...new Set(history.map((h) => h.studentId))];
+
+      device.dataValues.viewHistory = history;
+      device.dataValues.studentIds = studentIds;
+      device.dataValues.totalStudentsViewed = studentIds.length;
+    }
+
+    const totalPages = Math.ceil(count / limit);
+
+    // If searching by student ID, find which exact student IDs matched
+    let matchedStudentIds = [];
+    if (studentId && devices.length > 0) {
+      const allHistory = await DeviceViewHistory.findAll({
+        where: {
+          studentId: {
+            [Op.like]: `%${studentId}%`,
+          },
+        },
+        attributes: ["studentId"],
+        group: ["studentId"],
+      });
+      matchedStudentIds = allHistory.map((h) => h.studentId);
+    }
+
+    res.json({
+      success: true,
+      data: devices,
+      pagination: {
+        page,
+        limit,
+        totalPages,
+        totalItems: count,
+      },
+      ...(studentId && {
+        searchInfo: {
+          studentId,
+          matchedStudentIds,
+          message:
+            matchedStudentIds.length > 0
+              ? `Found ${count} device(s) that viewed: ${matchedStudentIds.join(", ")}`
+              : `Found ${count} device(s) that viewed student ID: ${studentId}`,
+        },
+      }),
+    });
+  } catch (error) {
+    console.error("Get locked devices error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch locked devices",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
+  }
+};
+
+// Unlock a specific device
+const unlockDevice = async (req, res) => {
+  try {
+    const { deviceId } = req.params;
+    const { DeviceView } = require("../models");
+
+    const device = await DeviceView.findOne({
+      where: { deviceId },
+    });
+
+    if (!device) {
+      return res.status(404).json({
+        success: false,
+        message: "Device not found",
+      });
+    }
+
+    // Reset the device
+    device.viewCount = 0;
+    device.isLocked = false;
+    await device.save();
+
+    res.json({
+      success: true,
+      message: "Device unlocked successfully",
+      data: device,
+    });
+  } catch (error) {
+    console.error("Unlock device error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to unlock device",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
+  }
+};
+
+// Unlock all locked devices
+const unlockAllDevices = async (req, res) => {
+  try {
+    const { DeviceView } = require("../models");
+
+    const result = await DeviceView.update(
+      {
+        viewCount: 0,
+        isLocked: false,
+      },
+      {
+        where: {
+          [Op.or]: [
+            { isLocked: true },
+            { viewCount: { [Op.gte]: sequelize.col("maxViews") } },
+          ],
+        },
+      },
+    );
+
+    res.json({
+      success: true,
+      message: `Successfully unlocked ${result[0]} device(s)`,
+      unlockedCount: result[0],
+    });
+  } catch (error) {
+    console.error("Unlock all devices error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to unlock devices",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
+  }
+};
+
+// Delete a device record
+const deleteDevice = async (req, res) => {
+  try {
+    const { deviceId } = req.params;
+    const { DeviceView } = require("../models");
+
+    const device = await DeviceView.findOne({
+      where: { deviceId },
+    });
+
+    if (!device) {
+      return res.status(404).json({
+        success: false,
+        message: "Device not found",
+      });
+    }
+
+    await device.destroy();
+
+    res.json({
+      success: true,
+      message: "Device deleted successfully",
+    });
+  } catch (error) {
+    console.error("Delete device error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to delete device",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
+  }
+};
+
 module.exports = {
   getAllStudents,
   getStudentDetails,
@@ -517,4 +755,8 @@ module.exports = {
   bulkDelete,
   clearAllStudents,
   resetStudentViewCount,
+  getLockedDevices,
+  unlockDevice,
+  unlockAllDevices,
+  deleteDevice,
 };
