@@ -67,20 +67,15 @@ const DeviceManagementPage = () => {
     if (page !== 1) {
       setPage(1);
     } else {
-      // Commented out to avoid rate limiting - use manual refresh instead
-      // loadDevices();
-      console.log(
-        "⚠️ Auto-loading disabled to prevent rate limits. Click refresh to load devices.",
-      );
+      // Auto-load devices when parameters change
+      loadDevices();
     }
   }, [showAll, studentIdSearch]);
 
   useEffect(() => {
-    // Commented out to avoid rate limiting - use manual refresh instead
-    // loadDevices();
-    console.log(
-      "⚠️ Auto-loading disabled to prevent rate limits. Click refresh to load devices.",
-    );
+    // Auto-load devices when page changes
+    loadDevices();
+    console.log("📱 Loading devices for page:", page);
   }, [page]);
 
   const loadDevices = async () => {

@@ -511,13 +511,14 @@ const resetStudentViewCount = async (req, res) => {
 const getLockedDevices = async (req, res) => {
   try {
     const { DeviceView, DeviceViewHistory } = require("../models");
+    const { Op } = require("sequelize");
 
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
     const offset = (page - 1) * limit;
 
     const showAll = req.query.showAll === "true";
-    const studentId = req.query.studentId; // New: search by student ID
+    const studentId = req.query.studentId;
 
     console.log("🔍 Device search params:", {
       page,
@@ -532,14 +533,22 @@ const getLockedDevices = async (req, res) => {
     if (studentId) {
       console.log(`🔎 Searching for devices that viewed student: ${studentId}`);
 
-      const viewHistory =
-        await DeviceViewHistory.getDevicesByStudent(studentId);
-      console.log(`📊 Found ${viewHistory.length} view history records`);
+      // Optimized: Get device IDs in a single query
+      const deviceIds = await DeviceViewHistory.findAll({
+        where: {
+          studentId: {
+            [Op.like]: `%${studentId}%`,
+          },
+        },
+        attributes: ["deviceId"],
+        group: ["deviceId"],
+        raw: true,
+      });
 
-      const deviceIds = [...new Set(viewHistory.map((v) => v.deviceId))];
-      console.log(`📱 Unique device IDs: ${deviceIds.length}`, deviceIds);
+      const uniqueDeviceIds = deviceIds.map((d) => d.deviceId);
+      console.log(`📱 Found ${uniqueDeviceIds.length} unique devices`);
 
-      if (deviceIds.length === 0) {
+      if (uniqueDeviceIds.length === 0) {
         console.log(`❌ No devices found for student: ${studentId}`);
         return res.json({
           success: true,
@@ -557,84 +566,120 @@ const getLockedDevices = async (req, res) => {
         });
       }
 
-      whereClause.deviceId = { [Op.in]: deviceIds };
+      whereClause.deviceId = { [Op.in]: uniqueDeviceIds };
     } else if (!showAll) {
       // Show only locked devices if not showing all and not searching by student
       whereClause = {
         [Op.or]: [
           { isLocked: true },
-          { viewCount: { [Op.gte]: sequelize.col("maxViews") } },
+          { viewCount: { [Op.gte]: require("sequelize").col("maxViews") } },
         ],
       };
     }
 
+    // Optimized: Get devices with basic info only
     const { count, rows: devices } = await DeviceView.findAndCountAll({
       where: whereClause,
       order: [
-        // For locked devices, sort by when they were last updated (when they got locked)
-        // Most recently locked devices first
         ["updatedAt", "DESC"],
         ["lastViewedAt", "DESC"],
       ],
       offset,
       limit,
+      // Only get essential fields to reduce data transfer
+      attributes: [
+        "deviceId",
+        "ipAddress",
+        "userAgent",
+        "viewCount",
+        "maxViews",
+        "isLocked",
+        "lastViewedAt",
+        "createdAt",
+        "updatedAt",
+      ],
     });
 
-    // For ALL devices, add view history with student IDs and lock information
-    for (let device of devices) {
-      const history = await DeviceViewHistory.findAll({
+    // Optimized: Get view history for all devices in batch queries
+    if (devices.length > 0) {
+      const deviceIds = devices.map((d) => d.deviceId);
+
+      // Get view history for all devices in one query
+      const allViewHistory = await DeviceViewHistory.findAll({
         where: {
-          deviceId: device.deviceId,
+          deviceId: { [Op.in]: deviceIds },
         },
         order: [["viewedAt", "DESC"]],
-        limit: 10, // Get last 10 views
+        attributes: ["deviceId", "studentId", "viewedAt"],
+        raw: true,
       });
 
-      // Extract unique student IDs
-      const studentIds = [...new Set(history.map((h) => h.studentId))];
+      // Group history by device ID
+      const historyByDevice = {};
+      const studentsByDevice = {};
 
-      // Determine when device was locked (approximation based on when it reached max views)
-      let lockedAt = null;
-      if (device.isLocked || device.viewCount >= device.maxViews) {
-        // If device is locked, use the updatedAt timestamp as lock time
-        lockedAt = device.updatedAt;
+      allViewHistory.forEach((history) => {
+        if (!historyByDevice[history.deviceId]) {
+          historyByDevice[history.deviceId] = [];
+          studentsByDevice[history.deviceId] = new Set();
+        }
 
-        // If we have view history, try to find when it reached max views
-        if (history.length > 0 && device.viewCount >= device.maxViews) {
-          // Find the view that would have caused the lock (the nth view where n = maxViews)
-          const lockingViewIndex = device.maxViews - 1;
-          if (history.length > lockingViewIndex) {
-            // Views are ordered DESC, so we need to reverse to find the locking view
-            const reversedHistory = [...history].reverse();
-            if (reversedHistory[lockingViewIndex]) {
-              lockedAt = reversedHistory[lockingViewIndex].viewedAt;
+        // Only keep last 5 views per device for performance
+        if (historyByDevice[history.deviceId].length < 5) {
+          historyByDevice[history.deviceId].push(history);
+        }
+
+        studentsByDevice[history.deviceId].add(history.studentId);
+      });
+
+      // Add computed fields to devices
+      devices.forEach((device) => {
+        const deviceHistory = historyByDevice[device.deviceId] || [];
+        const studentIds = Array.from(studentsByDevice[device.deviceId] || []);
+
+        // Determine lock time
+        let lockedAt = null;
+        if (device.isLocked || device.viewCount >= device.maxViews) {
+          lockedAt = device.updatedAt;
+
+          // If we have enough history, try to find the exact locking view
+          if (deviceHistory.length >= device.maxViews) {
+            const lockingView = deviceHistory[device.maxViews - 1];
+            if (lockingView) {
+              lockedAt = lockingView.viewedAt;
             }
           }
         }
-      }
 
-      device.dataValues.viewHistory = history;
-      device.dataValues.studentIds = studentIds;
-      device.dataValues.totalStudentsViewed = studentIds.length;
-      device.dataValues.lockedAt = lockedAt;
+        device.dataValues.viewHistory = deviceHistory;
+        device.dataValues.studentIds = studentIds;
+        device.dataValues.totalStudentsViewed = studentIds.length;
+        device.dataValues.lockedAt = lockedAt;
+      });
     }
 
     const totalPages = Math.ceil(count / limit);
 
-    // If searching by student ID, find which exact student IDs matched
-    let matchedStudentIds = [];
-    if (studentId && devices.length > 0) {
-      const allHistory = await DeviceViewHistory.findAll({
+    // Optimized search info for student ID searches
+    let searchInfo = null;
+    if (studentId) {
+      const matchedStudentIds = await DeviceViewHistory.findAll({
         where: {
-          studentId: {
-            [Op.like]: `%${studentId}%`,
-          },
+          studentId: { [Op.like]: `%${studentId}%` },
         },
         attributes: ["studentId"],
         group: ["studentId"],
+        raw: true,
       });
-      matchedStudentIds = allHistory.map((h) => h.studentId);
+
+      searchInfo = {
+        studentId,
+        matchedStudentIds: matchedStudentIds.map((s) => s.studentId),
+        message: `Found ${count} device(s) that viewed student ID: ${studentId}`,
+      };
     }
+
+    console.log(`✅ Retrieved ${devices.length} devices in optimized query`);
 
     res.json({
       success: true,
@@ -645,19 +690,10 @@ const getLockedDevices = async (req, res) => {
         totalPages,
         totalItems: count,
       },
-      ...(studentId && {
-        searchInfo: {
-          studentId,
-          matchedStudentIds,
-          message:
-            matchedStudentIds.length > 0
-              ? `Found ${count} device(s) that viewed: ${matchedStudentIds.join(", ")}`
-              : `Found ${count} device(s) that viewed student ID: ${studentId}`,
-        },
-      }),
+      ...(searchInfo && { searchInfo }),
     });
   } catch (error) {
-    console.error("Get locked devices error:", error);
+    console.error("💥 Get locked devices error:", error);
     res.status(500).json({
       success: false,
       message: "Failed to fetch locked devices",
