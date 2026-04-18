@@ -15,6 +15,7 @@ const {
   unlockAllDevices,
   deleteDevice,
   updateAllMaxViews,
+  getCurrentMaxViews,
 } = require("../controllers/adminController");
 const {
   uploadExcel: uploadMiddleware,
@@ -245,6 +246,11 @@ router.delete(
   [param("deviceId").notEmpty().withMessage("Device ID is required")],
   deleteDevice,
 );
+
+// @route   GET /api/admin/devices/max-views
+// @desc    Get current max views setting
+// @access  Private/Admin
+router.get("/devices/max-views", getCurrentMaxViews);
 
 // @route   PUT /api/admin/devices/max-views
 // @desc    Update max views for all devices

@@ -28,6 +28,7 @@ const StudentsPage = () => {
   const [pagination, setPagination] = useState({});
   const [filters, setFilters] = useState({ departments: [], batches: [] });
   const [editingStudent, setEditingStudent] = useState(null);
+  const [currentMaxViews, setCurrentMaxViews] = useState(10); // Default fallback
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [confirmModal, setConfirmModal] = useState({
     isOpen: false,
@@ -38,9 +39,24 @@ const StudentsPage = () => {
   });
   const [isConfirmLoading, setIsConfirmLoading] = useState(false);
 
+  // Fetch current max views setting
+  const fetchCurrentMaxViews = async () => {
+    try {
+      const response = await adminAPI.getCurrentMaxViews();
+      setCurrentMaxViews(response.data.data.currentMaxViews);
+    } catch (error) {
+      console.error("Error fetching current max views:", error);
+      // Keep default fallback of 10 if fetch fails
+    }
+  };
+
   useEffect(() => {
     loadStudents();
   }, [currentPage, selectedDepartment, selectedBatch]);
+
+  useEffect(() => {
+    fetchCurrentMaxViews();
+  }, []);
 
   const loadStudents = async () => {
     setIsLoading(true);
@@ -330,12 +346,14 @@ const StudentsPage = () => {
                                 student.isViewLocked
                                   ? "text-red-600"
                                   : (student.viewCount || 0) >=
-                                      (student.maxViews || 10) * 0.8
+                                      (student.maxViews || currentMaxViews) *
+                                        0.8
                                     ? "text-orange-600"
                                     : "text-gray-900"
                               }`}
                             >
-                              {student.viewCount || 0}/{student.maxViews || 10}
+                              {student.viewCount || 0}/
+                              {student.maxViews || currentMaxViews}
                             </span>
                           </div>
                           {student.isViewLocked && (

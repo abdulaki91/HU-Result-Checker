@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { adminAPI, handleApiError } from "../../services/api";
 import LoadingSpinner from "../../components/common/LoadingSpinner";
+import QuickActionButton from "../../components/common/QuickActionButton";
 import toast from "react-hot-toast";
 
 const UploadPage = () => {
@@ -216,10 +217,15 @@ const UploadPage = () => {
             {/* Upload Button */}
             {file && !isUploading && (
               <div className="mt-6 text-center">
-                <button onClick={handleUpload} className="btn-primary">
-                  <Upload className="h-4 w-4 mr-2" />
+                <QuickActionButton
+                  onClick={handleUpload}
+                  icon={Upload}
+                  variant="success"
+                  size="lg"
+                  className="px-8"
+                >
                   Upload and Process File
-                </button>
+                </QuickActionButton>
               </div>
             )}
           </div>

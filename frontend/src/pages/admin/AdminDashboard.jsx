@@ -13,6 +13,7 @@ import {
   ArrowRight,
   RefreshCw,
   Smartphone,
+  Eye,
   Sliders,
   Activity,
   Zap,
@@ -70,6 +71,15 @@ const AdminDashboard = () => {
       gradient: "from-indigo-500 via-purple-600 to-pink-600",
       iconBg: "bg-indigo-100",
       iconColor: "text-indigo-600",
+    },
+    {
+      title: "Max Views Settings",
+      description: "Adjust maximum views allowed per device",
+      icon: Eye,
+      to: "/admin/max-views",
+      gradient: "from-purple-500 via-indigo-600 to-blue-600",
+      iconBg: "bg-purple-100",
+      iconColor: "text-purple-600",
     },
     {
       title: "View Statistics",

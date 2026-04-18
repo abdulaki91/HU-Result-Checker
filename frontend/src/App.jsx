@@ -17,6 +17,7 @@ import UploadPage from "./pages/admin/UploadPage";
 import StatisticsPage from "./pages/admin/StatisticsPage";
 import ColumnSettingsPage from "./pages/admin/ColumnSettingsPage";
 import DeviceManagementPage from "./pages/admin/DeviceManagementPage";
+import MaxViewsPage from "./pages/admin/MaxViewsPage";
 
 // Protected Route Component
 import ProtectedRoute from "./components/auth/ProtectedRoute";
@@ -94,6 +95,14 @@ function App() {
                   element={
                     <ProtectedRoute>
                       <DeviceManagementPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/admin/max-views"
+                  element={
+                    <ProtectedRoute>
+                      <MaxViewsPage />
                     </ProtectedRoute>
                   }
                 />

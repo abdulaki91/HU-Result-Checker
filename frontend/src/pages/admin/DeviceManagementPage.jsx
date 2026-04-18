@@ -36,23 +36,51 @@ const DeviceManagementPage = () => {
   const [selectedDevice, setSelectedDevice] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showUnlockAllModal, setShowUnlockAllModal] = useState(false);
+
+  const [searchInfo, setSearchInfo] = useState(null);
+  const [expandedRows, setExpandedRows] = useState(new Set());
+
+  // Max Views Modal states
   const [showMaxViewsModal, setShowMaxViewsModal] = useState(false);
   const [newMaxViews, setNewMaxViews] = useState(6);
   const [currentMaxViews, setCurrentMaxViews] = useState(6);
-  const [searchInfo, setSearchInfo] = useState(null);
-  const [expandedRows, setExpandedRows] = useState(new Set());
+
+  // Fetch current max views setting
+  const fetchCurrentMaxViews = async () => {
+    try {
+      const response = await adminAPI.getCurrentMaxViews();
+      const maxViews = response.data.data.currentMaxViews;
+      setCurrentMaxViews(maxViews);
+      setNewMaxViews(maxViews);
+    } catch (error) {
+      console.error("Error fetching current max views:", error);
+      // Keep default fallback of 6 if fetch fails
+    }
+  };
+
+  useEffect(() => {
+    fetchCurrentMaxViews();
+  }, []);
 
   useEffect(() => {
     // Reset to page 1 when search parameters change
     if (page !== 1) {
       setPage(1);
     } else {
-      loadDevices();
+      // Commented out to avoid rate limiting - use manual refresh instead
+      // loadDevices();
+      console.log(
+        "⚠️ Auto-loading disabled to prevent rate limits. Click refresh to load devices.",
+      );
     }
   }, [showAll, studentIdSearch]);
 
   useEffect(() => {
-    loadDevices();
+    // Commented out to avoid rate limiting - use manual refresh instead
+    // loadDevices();
+    console.log(
+      "⚠️ Auto-loading disabled to prevent rate limits. Click refresh to load devices.",
+    );
   }, [page]);
 
   const loadDevices = async () => {
@@ -83,13 +111,6 @@ const DeviceManagementPage = () => {
       setTotalPages(response.data.pagination.totalPages);
       setTotalItems(response.data.pagination.totalItems);
       setSearchInfo(response.data.searchInfo || null);
-
-      // Update current max views from the first device (they should all be the same)
-      if (response.data.data.length > 0) {
-        const firstDevice = response.data.data[0];
-        setCurrentMaxViews(firstDevice.maxViews);
-        setNewMaxViews(firstDevice.maxViews); // Set modal input to current value
-      }
     } catch (error) {
       const errorMessage = handleApiError(error);
       console.error("❌ Error loading devices:", error);
@@ -122,34 +143,6 @@ const DeviceManagementPage = () => {
     }
   };
 
-  const handleUpdateMaxViews = async () => {
-    try {
-      // Validate input
-      if (newMaxViews < 1 || newMaxViews > 50) {
-        toast.error("Max views must be between 1 and 50");
-        return;
-      }
-
-      console.log(`🔄 Updating max views to ${newMaxViews} for all devices...`);
-
-      const response = await adminAPI.updateAllMaxViews(newMaxViews);
-
-      console.log("✅ Max views update response:", response.data);
-
-      toast.success(
-        `${response.data.message}\n` +
-          `Updated ${response.data.data.devicesUpdated} out of ${response.data.data.totalDevices} devices`,
-      );
-
-      setShowMaxViewsModal(false);
-      loadDevices(); // Refresh the device list
-    } catch (error) {
-      console.error("❌ Error updating max views:", error);
-      const errorMessage = handleApiError(error);
-      toast.error(`Failed to update max views: ${errorMessage}`);
-    }
-  };
-
   const handleDeleteDevice = async () => {
     if (!selectedDevice) return;
 
@@ -162,6 +155,24 @@ const DeviceManagementPage = () => {
     } catch (error) {
       const errorMessage = handleApiError(error);
       toast.error(errorMessage);
+    }
+  };
+
+  const handleUpdateMaxViews = async () => {
+    try {
+      console.log(`🔄 Updating max views to ${newMaxViews}...`);
+      const response = await adminAPI.updateAllMaxViews(newMaxViews);
+      console.log("✅ Success:", response.data);
+      toast.success(
+        `Updated max views to ${newMaxViews} for ${response.data.data.devicesUpdated} devices!`,
+      );
+      setCurrentMaxViews(newMaxViews);
+      setShowMaxViewsModal(false);
+      loadDevices(); // Refresh the devices list
+    } catch (error) {
+      console.error("❌ Error:", error);
+      const errorMessage = handleApiError(error);
+      toast.error(`Failed to update max views: ${errorMessage}`);
     }
   };
 
@@ -261,6 +272,7 @@ const DeviceManagementPage = () => {
           animate={{ opacity: 1, y: 0 }}
           className="mb-8"
         >
+          {/* Header */}
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center">
               <div className="p-3 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-2xl mr-4">
@@ -352,23 +364,6 @@ const DeviceManagementPage = () => {
 
           {/* Actions Bar */}
           <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
-            {/* Debug: Always visible Max Views button */}
-            <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
-              <p className="text-sm text-yellow-800 mb-2">
-                🔧 Debug: Max Views Control
-              </p>
-              <button
-                onClick={() => {
-                  console.log("Debug Max Views button clicked!");
-                  alert(`Current Max Views: ${currentMaxViews}`);
-                  setShowMaxViewsModal(true);
-                }}
-                className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors"
-              >
-                🔧 Debug: Adjust Max Views ({currentMaxViews})
-              </button>
-            </div>
-
             <div className="flex flex-col gap-4">
               {/* Student ID Search */}
               <div className="flex flex-col md:flex-row gap-4">
@@ -470,9 +465,10 @@ const DeviceManagementPage = () => {
                 {/* Refresh Button */}
                 <button
                   onClick={loadDevices}
-                  className="h-12 px-6 rounded-xl bg-gray-100 text-gray-700 hover:bg-gray-200 font-semibold transition-all flex items-center"
+                  className="h-12 px-6 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold hover:shadow-lg transition-all flex items-center"
                 >
-                  <RefreshCw className="h-5 w-5" />
+                  <RefreshCw className="h-5 w-5 mr-2" />
+                  Load Devices
                 </button>
               </div>
             </div>
@@ -484,335 +480,442 @@ const DeviceManagementPage = () => {
           <div className="flex justify-center items-center py-20">
             <LoadingSpinner variant="gradient" text="Loading devices..." />
           </div>
-        ) : filteredDevices.length === 0 ? (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="bg-white rounded-2xl p-12 text-center shadow-lg"
-          >
-            <Smartphone className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">
-              No devices found
-            </h3>
-            <p className="text-gray-600">
-              {searchQuery
-                ? "Try adjusting your search query"
-                : showAll
-                  ? "No devices have been registered yet"
-                  : "No locked devices found"}
-            </p>
-          </motion.div>
         ) : (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden"
-          >
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
-                  <tr>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                      Device ID
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                      Views
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                      Students Viewed
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                      Last Viewed
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                      Locked At
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                      IP Address
-                    </th>
-                    <th className="px-6 py-4 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {filteredDevices.map((device, index) => (
-                    <React.Fragment key={device.id}>
-                      <motion.tr
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: index * 0.05 }}
-                        className={`hover:bg-gray-50 transition-colors ${
-                          isRecentlyLocked(device.lockedAt)
-                            ? "bg-red-50 border-l-4 border-red-400"
-                            : ""
-                        }`}
-                      >
-                        <td className="px-6 py-4">
-                          <div className="flex items-center">
-                            <button
-                              onClick={() => toggleRow(device.deviceId)}
-                              className="mr-2 p-1 hover:bg-gray-200 rounded transition-colors"
-                            >
-                              {expandedRows.has(device.deviceId) ? (
-                                <ChevronUp className="h-4 w-4 text-gray-600" />
-                              ) : (
-                                <ChevronDown className="h-4 w-4 text-gray-600" />
-                              )}
-                            </button>
-                            <Monitor className="h-5 w-5 text-gray-400 mr-3" />
-                            <div>
-                              <p className="text-sm font-mono font-medium text-gray-900">
-                                {truncateDeviceId(device.deviceId)}
-                              </p>
-                              <div className="flex items-center gap-2 mt-1">
-                                <p className="text-xs text-gray-500">
-                                  Created: {formatDate(device.createdAt)}
-                                </p>
-                                <span className="text-xs text-gray-400">•</span>
-                                <p className="text-xs text-indigo-600 font-medium">
-                                  {getBrowserInfo(device.userAgent)} on{" "}
-                                  {getDeviceType(device.userAgent)}
-                                </p>
-                                {device.studentIds &&
-                                  device.studentIds.length > 0 && (
-                                    <>
-                                      <span className="text-xs text-gray-400">
-                                        •
-                                      </span>
-                                      <p className="text-xs text-purple-600 font-medium">
-                                        Last viewed: {device.studentIds[0]}
-                                      </p>
-                                    </>
-                                  )}
-                              </div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center justify-between">
-                            <span
-                              className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(device)}`}
-                            >
-                              {getStatusIcon(device)}
-                              <span className="ml-2">
-                                {device.isLocked ||
-                                device.viewCount >= device.maxViews
-                                  ? "Locked"
-                                  : "Active"}
-                              </span>
-                            </span>
-                            {isRecentlyLocked(device.lockedAt) && (
-                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700 ml-2">
-                                🔥 Recently Locked
-                              </span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center">
-                            <Eye className="h-4 w-4 text-gray-400 mr-2" />
-                            <span className="text-sm font-semibold text-gray-900">
-                              {device.viewCount}/{device.maxViews}
-                            </span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-                            <div
-                              className={`h-2 rounded-full transition-all ${
-                                device.viewCount >= device.maxViews
-                                  ? "bg-red-500"
-                                  : device.viewCount >= device.maxViews * 0.8
-                                    ? "bg-orange-500"
-                                    : "bg-green-500"
-                              }`}
-                              style={{
-                                width: `${(device.viewCount / device.maxViews) * 100}%`,
-                              }}
-                            />
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center">
-                            <User className="h-4 w-4 text-gray-400 mr-2" />
-                            <span className="text-sm font-semibold text-indigo-600">
-                              {device.totalStudentsViewed || 0} student(s)
-                            </span>
-                          </div>
-                          {device.studentIds &&
-                            device.studentIds.length > 0 && (
-                              <div className="mt-1 flex flex-wrap gap-1">
-                                {device.studentIds
-                                  .slice(0, 2)
-                                  .map((sid, idx) => (
-                                    <span
-                                      key={idx}
-                                      className="inline-block px-2 py-0.5 bg-indigo-100 text-indigo-700 text-xs rounded font-mono"
-                                    >
-                                      {sid}
-                                    </span>
-                                  ))}
-                                {device.studentIds.length > 2 && (
-                                  <span className="inline-block px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded">
-                                    +{device.studentIds.length - 2} more
-                                  </span>
-                                )}
-                              </div>
-                            )}
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center text-sm text-gray-600">
-                            <Clock className="h-4 w-4 mr-2" />
-                            {formatDate(device.lastViewedAt)}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          {device.lockedAt ? (
-                            <div className="flex items-center text-sm text-red-600">
-                              <Lock className="h-4 w-4 mr-2" />
-                              {formatDate(device.lockedAt)}
-                            </div>
-                          ) : (
-                            <span className="text-sm text-gray-400 italic">
-                              Not locked
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className="text-sm font-mono text-gray-900">
-                            {device.ipAddress || "N/A"}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            {(device.isLocked ||
-                              device.viewCount >= device.maxViews) && (
-                              <button
-                                onClick={() =>
-                                  handleUnlockDevice(device.deviceId)
-                                }
-                                className="p-2 rounded-lg bg-green-100 text-green-600 hover:bg-green-200 transition-colors"
-                                title="Unlock device"
-                              >
-                                <Unlock className="h-4 w-4" />
-                              </button>
-                            )}
-                            <button
-                              onClick={() => {
-                                setSelectedDevice(device);
-                                setShowDeleteModal(true);
-                              }}
-                              className="p-2 rounded-lg bg-red-100 text-red-600 hover:bg-red-200 transition-colors"
-                              title="Delete device"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </motion.tr>
+          <>
+            {/* Offline Max Views Control - Always Available */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-2xl p-6 shadow-lg border border-purple-200 mb-6"
+            >
+              <div className="flex items-center mb-4">
+                <div className="p-3 bg-purple-100 rounded-xl mr-4">
+                  <Eye className="h-6 w-6 text-purple-600" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900">
+                    Max Views Control
+                  </h3>
+                  <p className="text-gray-600">
+                    Adjust maximum views allowed for all devices
+                  </p>
+                </div>
+              </div>
 
-                      {/* Expanded Row - View History */}
-                      <AnimatePresence>
-                        {expandedRows.has(device.deviceId) && (
-                          <motion.tr
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: "auto" }}
-                            exit={{ opacity: 0, height: 0 }}
-                            className="bg-gradient-to-r from-indigo-50 to-purple-50"
-                          >
-                            <td colSpan="8" className="px-6 py-4">
-                              <div className="flex items-start space-x-2 mb-3">
-                                <History className="h-5 w-5 text-indigo-600 mt-0.5" />
-                                <h4 className="text-sm font-bold text-gray-900">
-                                  View History (Last 10 views)
-                                </h4>
-                              </div>
-                              {device.viewHistory &&
-                              device.viewHistory.length > 0 ? (
-                                <div className="overflow-x-auto">
-                                  <table className="min-w-full divide-y divide-indigo-200">
-                                    <thead className="bg-indigo-100">
-                                      <tr>
-                                        <th className="px-4 py-2 text-left text-xs font-semibold text-indigo-900">
-                                          #
-                                        </th>
-                                        <th className="px-4 py-2 text-left text-xs font-semibold text-indigo-900">
-                                          Student ID
-                                        </th>
-                                        <th className="px-4 py-2 text-left text-xs font-semibold text-indigo-900">
-                                          Viewed At
-                                        </th>
-                                        <th className="px-4 py-2 text-left text-xs font-semibold text-indigo-900">
-                                          IP Address
-                                        </th>
-                                      </tr>
-                                    </thead>
-                                    <tbody className="bg-white divide-y divide-indigo-100">
-                                      {device.viewHistory.map((view, idx) => (
-                                        <tr
-                                          key={view.id}
-                                          className="hover:bg-indigo-50 transition-colors"
-                                        >
-                                          <td className="px-4 py-2 text-xs text-gray-600">
-                                            {idx + 1}
-                                          </td>
-                                          <td className="px-4 py-2 text-sm font-mono font-semibold text-indigo-700">
-                                            {view.studentId}
-                                          </td>
-                                          <td className="px-4 py-2 text-xs text-gray-600">
-                                            {formatDate(view.viewedAt)}
-                                          </td>
-                                          <td className="px-4 py-2 text-xs font-mono text-gray-600">
-                                            {view.ipAddress || "N/A"}
-                                          </td>
-                                        </tr>
-                                      ))}
-                                    </tbody>
-                                  </table>
-                                </div>
-                              ) : (
-                                <p className="text-sm text-gray-500 italic">
-                                  No view history available
-                                </p>
-                              )}
-                            </td>
-                          </motion.tr>
-                        )}
-                      </AnimatePresence>
-                    </React.Fragment>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-white rounded-xl p-4 border border-purple-100">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    New Max Views (1-50)
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="50"
+                    value={newMaxViews}
+                    onChange={(e) =>
+                      setNewMaxViews(parseInt(e.target.value) || 1)
+                    }
+                    className="w-full h-12 px-4 rounded-xl border-2 border-purple-200 focus:border-purple-500 focus:outline-none transition-colors text-center text-lg font-semibold"
+                  />
+                </div>
 
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between">
-                <p className="text-sm text-gray-600">
-                  Showing {(page - 1) * 20 + 1} to{" "}
-                  {Math.min(page * 20, totalItems)} of {totalItems} devices
-                </p>
-                <div className="flex gap-2">
+                <div className="bg-white rounded-xl p-4 border border-purple-100">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Current Setting
+                  </label>
+                  <div className="h-12 flex items-center justify-center bg-gray-50 rounded-xl text-lg font-bold text-gray-700">
+                    {currentMaxViews} views
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-xl p-4 border border-purple-100">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Action
+                  </label>
                   <button
-                    onClick={() => setPage(page - 1)}
-                    disabled={page === 1}
-                    className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    onClick={async () => {
+                      try {
+                        console.log(
+                          `🔄 Updating max views to ${newMaxViews}...`,
+                        );
+                        const response =
+                          await adminAPI.updateAllMaxViews(newMaxViews);
+                        console.log("✅ Success:", response.data);
+                        toast.success(
+                          `Updated max views to ${newMaxViews} for ${response.data.data.devicesUpdated} devices!`,
+                        );
+                        setCurrentMaxViews(newMaxViews);
+                      } catch (error) {
+                        console.error("❌ Error:", error);
+                        if (error.response?.status === 429) {
+                          toast.error(
+                            "Rate limit exceeded. Server restart required.",
+                          );
+                        } else {
+                          toast.error(
+                            `Error: ${error.response?.data?.message || error.message}`,
+                          );
+                        }
+                      }
+                    }}
+                    className="w-full h-12 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-semibold hover:shadow-lg transition-all flex items-center justify-center"
                   >
-                    Previous
-                  </button>
-                  <button
-                    onClick={() => setPage(page + 1)}
-                    disabled={page === totalPages}
-                    className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    Next
+                    <Eye className="h-5 w-5 mr-2" />
+                    Update All Devices
                   </button>
                 </div>
               </div>
+
+              <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-xl">
+                <p className="text-sm text-yellow-800">
+                  <strong>Note:</strong> This control works independently of the
+                  device list below. If you see rate limit errors, the server
+                  needs to be restarted with new configuration.
+                </p>
+              </div>
+            </motion.div>
+
+            {/* Device List Section */}
+            {filteredDevices.length === 0 ? (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="bg-white rounded-2xl p-12 text-center shadow-lg"
+              >
+                <Smartphone className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                  No devices found
+                </h3>
+                <p className="text-gray-600">
+                  {searchQuery
+                    ? "Try adjusting your search query"
+                    : showAll
+                      ? "No devices have been registered yet"
+                      : "No locked devices found"}
+                </p>
+                <p className="text-sm text-red-600 mt-2">
+                  If you see rate limit errors above, use the Max Views Control
+                  section which works independently.
+                </p>
+              </motion.div>
+            ) : (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden"
+              >
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
+                      <tr>
+                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                          Device ID
+                        </th>
+                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                          Status
+                        </th>
+                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                          Views
+                        </th>
+                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                          Students Viewed
+                        </th>
+                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                          Last Viewed
+                        </th>
+                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                          Locked At
+                        </th>
+                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                          IP Address
+                        </th>
+                        <th className="px-6 py-4 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {filteredDevices.map((device, index) => (
+                        <React.Fragment key={device.id}>
+                          <motion.tr
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: index * 0.05 }}
+                            className={`hover:bg-gray-50 transition-colors ${
+                              isRecentlyLocked(device.lockedAt)
+                                ? "bg-red-50 border-l-4 border-red-400"
+                                : ""
+                            }`}
+                          >
+                            <td className="px-6 py-4">
+                              <div className="flex items-center">
+                                <button
+                                  onClick={() => toggleRow(device.deviceId)}
+                                  className="mr-2 p-1 hover:bg-gray-200 rounded transition-colors"
+                                >
+                                  {expandedRows.has(device.deviceId) ? (
+                                    <ChevronUp className="h-4 w-4 text-gray-600" />
+                                  ) : (
+                                    <ChevronDown className="h-4 w-4 text-gray-600" />
+                                  )}
+                                </button>
+                                <Monitor className="h-5 w-5 text-gray-400 mr-3" />
+                                <div>
+                                  <p className="text-sm font-mono font-medium text-gray-900">
+                                    {truncateDeviceId(device.deviceId)}
+                                  </p>
+                                  <div className="flex items-center gap-2 mt-1">
+                                    <p className="text-xs text-gray-500">
+                                      Created: {formatDate(device.createdAt)}
+                                    </p>
+                                    <span className="text-xs text-gray-400">
+                                      •
+                                    </span>
+                                    <p className="text-xs text-indigo-600 font-medium">
+                                      {getBrowserInfo(device.userAgent)} on{" "}
+                                      {getDeviceType(device.userAgent)}
+                                    </p>
+                                    {device.studentIds &&
+                                      device.studentIds.length > 0 && (
+                                        <>
+                                          <span className="text-xs text-gray-400">
+                                            •
+                                          </span>
+                                          <p className="text-xs text-purple-600 font-medium">
+                                            Last viewed: {device.studentIds[0]}
+                                          </p>
+                                        </>
+                                      )}
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="flex items-center justify-between">
+                                <span
+                                  className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(device)}`}
+                                >
+                                  {getStatusIcon(device)}
+                                  <span className="ml-2">
+                                    {device.isLocked ||
+                                    device.viewCount >= device.maxViews
+                                      ? "Locked"
+                                      : "Active"}
+                                  </span>
+                                </span>
+                                {isRecentlyLocked(device.lockedAt) && (
+                                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700 ml-2">
+                                    🔥 Recently Locked
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="flex items-center">
+                                <Eye className="h-4 w-4 text-gray-400 mr-2" />
+                                <span className="text-sm font-semibold text-gray-900">
+                                  {device.viewCount}/{device.maxViews}
+                                </span>
+                              </div>
+                              <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+                                <div
+                                  className={`h-2 rounded-full transition-all ${
+                                    device.viewCount >= device.maxViews
+                                      ? "bg-red-500"
+                                      : device.viewCount >=
+                                          device.maxViews * 0.8
+                                        ? "bg-orange-500"
+                                        : "bg-green-500"
+                                  }`}
+                                  style={{
+                                    width: `${(device.viewCount / device.maxViews) * 100}%`,
+                                  }}
+                                />
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="flex items-center">
+                                <User className="h-4 w-4 text-gray-400 mr-2" />
+                                <span className="text-sm font-semibold text-indigo-600">
+                                  {device.totalStudentsViewed || 0} student(s)
+                                </span>
+                              </div>
+                              {device.studentIds &&
+                                device.studentIds.length > 0 && (
+                                  <div className="mt-1 flex flex-wrap gap-1">
+                                    {device.studentIds
+                                      .slice(0, 2)
+                                      .map((sid, idx) => (
+                                        <span
+                                          key={idx}
+                                          className="inline-block px-2 py-0.5 bg-indigo-100 text-indigo-700 text-xs rounded font-mono"
+                                        >
+                                          {sid}
+                                        </span>
+                                      ))}
+                                    {device.studentIds.length > 2 && (
+                                      <span className="inline-block px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded">
+                                        +{device.studentIds.length - 2} more
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="flex items-center text-sm text-gray-600">
+                                <Clock className="h-4 w-4 mr-2" />
+                                {formatDate(device.lastViewedAt)}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              {device.lockedAt ? (
+                                <div className="flex items-center text-sm text-red-600">
+                                  <Lock className="h-4 w-4 mr-2" />
+                                  {formatDate(device.lockedAt)}
+                                </div>
+                              ) : (
+                                <span className="text-sm text-gray-400 italic">
+                                  Not locked
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className="text-sm font-mono text-gray-900">
+                                {device.ipAddress || "N/A"}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                {(device.isLocked ||
+                                  device.viewCount >= device.maxViews) && (
+                                  <button
+                                    onClick={() =>
+                                      handleUnlockDevice(device.deviceId)
+                                    }
+                                    className="p-2 rounded-lg bg-green-100 text-green-600 hover:bg-green-200 transition-colors"
+                                    title="Unlock device"
+                                  >
+                                    <Unlock className="h-4 w-4" />
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => {
+                                    setSelectedDevice(device);
+                                    setShowDeleteModal(true);
+                                  }}
+                                  className="p-2 rounded-lg bg-red-100 text-red-600 hover:bg-red-200 transition-colors"
+                                  title="Delete device"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </motion.tr>
+
+                          {/* Expanded Row - View History */}
+                          <AnimatePresence>
+                            {expandedRows.has(device.deviceId) && (
+                              <motion.tr
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: "auto" }}
+                                exit={{ opacity: 0, height: 0 }}
+                                className="bg-gradient-to-r from-indigo-50 to-purple-50"
+                              >
+                                <td colSpan="8" className="px-6 py-4">
+                                  <div className="flex items-start space-x-2 mb-3">
+                                    <History className="h-5 w-5 text-indigo-600 mt-0.5" />
+                                    <h4 className="text-sm font-bold text-gray-900">
+                                      View History (Last 10 views)
+                                    </h4>
+                                  </div>
+                                  {device.viewHistory &&
+                                  device.viewHistory.length > 0 ? (
+                                    <div className="overflow-x-auto">
+                                      <table className="min-w-full divide-y divide-indigo-200">
+                                        <thead className="bg-indigo-100">
+                                          <tr>
+                                            <th className="px-4 py-2 text-left text-xs font-semibold text-indigo-900">
+                                              #
+                                            </th>
+                                            <th className="px-4 py-2 text-left text-xs font-semibold text-indigo-900">
+                                              Student ID
+                                            </th>
+                                            <th className="px-4 py-2 text-left text-xs font-semibold text-indigo-900">
+                                              Viewed At
+                                            </th>
+                                            <th className="px-4 py-2 text-left text-xs font-semibold text-indigo-900">
+                                              IP Address
+                                            </th>
+                                          </tr>
+                                        </thead>
+                                        <tbody className="bg-white divide-y divide-indigo-100">
+                                          {device.viewHistory.map(
+                                            (view, idx) => (
+                                              <tr
+                                                key={view.id}
+                                                className="hover:bg-indigo-50 transition-colors"
+                                              >
+                                                <td className="px-4 py-2 text-xs text-gray-600">
+                                                  {idx + 1}
+                                                </td>
+                                                <td className="px-4 py-2 text-sm font-mono font-semibold text-indigo-700">
+                                                  {view.studentId}
+                                                </td>
+                                                <td className="px-4 py-2 text-xs text-gray-600">
+                                                  {formatDate(view.viewedAt)}
+                                                </td>
+                                                <td className="px-4 py-2 text-xs font-mono text-gray-600">
+                                                  {view.ipAddress || "N/A"}
+                                                </td>
+                                              </tr>
+                                            ),
+                                          )}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  ) : (
+                                    <p className="text-sm text-gray-500 italic">
+                                      No view history available
+                                    </p>
+                                  )}
+                                </td>
+                              </motion.tr>
+                            )}
+                          </AnimatePresence>
+                        </React.Fragment>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between">
+                    <p className="text-sm text-gray-600">
+                      Showing {(page - 1) * 20 + 1} to{" "}
+                      {Math.min(page * 20, totalItems)} of {totalItems} devices
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setPage(page - 1)}
+                        disabled={page === 1}
+                        className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        Previous
+                      </button>
+                      <button
+                        onClick={() => setPage(page + 1)}
+                        disabled={page === totalPages}
+                        className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </motion.div>
             )}
-          </motion.div>
+          </>
         )}
 
         {/* Delete Confirmation Modal */}

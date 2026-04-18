@@ -834,6 +834,48 @@ const updateAllMaxViews = async (req, res) => {
   }
 };
 
+getCurrentMaxViews = async (req, res) => {
+  try {
+    const { DeviceView } = require("../models");
+
+    console.log(`📊 Getting current max views setting...`);
+
+    // Get a sample device to check current max views setting
+    // If no devices exist, return default value
+    const sampleDevice = await DeviceView.findOne({
+      attributes: ["maxViews"],
+      order: [["updatedAt", "DESC"]],
+    });
+
+    let currentMaxViews = 6; // Default value
+    if (sampleDevice) {
+      currentMaxViews = sampleDevice.maxViews;
+    }
+
+    // Get total device count for additional info
+    const totalDevices = await DeviceView.count();
+
+    console.log(
+      `📱 Current max views: ${currentMaxViews}, Total devices: ${totalDevices}`,
+    );
+
+    res.json({
+      success: true,
+      data: {
+        currentMaxViews: currentMaxViews,
+        totalDevices: totalDevices,
+      },
+    });
+  } catch (error) {
+    console.error("💥 Get current max views error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to get current max views setting",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
+  }
+};
+
 module.exports = {
   getAllStudents,
   getStudentDetails,
@@ -849,4 +891,5 @@ module.exports = {
   unlockAllDevices,
   deleteDevice,
   updateAllMaxViews,
+  getCurrentMaxViews,
 };

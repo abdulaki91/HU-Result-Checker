@@ -160,6 +160,8 @@ export const adminAPI = {
 
   updateAllMaxViews: (maxViews) =>
     api.put("/admin/devices/max-views", { maxViews }),
+
+  getCurrentMaxViews: () => api.get("/admin/devices/max-views"),
 };
 
 // Column Settings API (Protected)
