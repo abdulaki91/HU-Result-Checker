@@ -66,15 +66,25 @@ app.use(
 );
 app.use(compression());
 
-// Rate limiting
+// Rate limiting - Very high limits for development/admin use
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
+  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // Use env var or 15 minutes
+  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 2000, // Use env var or 2000 requests
   message: {
     success: false,
     message: "Too many requests from this IP, please try again later.",
   },
+  // Skip rate limiting for admin routes temporarily
+  skip: (req) => {
+    return req.path.startsWith("/api/admin/");
+  },
 });
+
+console.log(
+  `🔒 Rate limiting configured: ${limiter.max} requests per ${limiter.windowMs / 1000 / 60} minutes`,
+);
+console.log(`🔓 Admin routes bypass rate limiting`);
+
 app.use("/api/", limiter);
 
 // CORS configuration

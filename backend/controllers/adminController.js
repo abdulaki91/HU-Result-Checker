@@ -570,12 +570,17 @@ const getLockedDevices = async (req, res) => {
 
     const { count, rows: devices } = await DeviceView.findAndCountAll({
       where: whereClause,
-      order: [["lastViewedAt", "DESC"]],
+      order: [
+        // For locked devices, sort by when they were last updated (when they got locked)
+        // Most recently locked devices first
+        ["updatedAt", "DESC"],
+        ["lastViewedAt", "DESC"],
+      ],
       offset,
       limit,
     });
 
-    // For ALL devices, add view history with student IDs
+    // For ALL devices, add view history with student IDs and lock information
     for (let device of devices) {
       const history = await DeviceViewHistory.findAll({
         where: {
@@ -588,9 +593,30 @@ const getLockedDevices = async (req, res) => {
       // Extract unique student IDs
       const studentIds = [...new Set(history.map((h) => h.studentId))];
 
+      // Determine when device was locked (approximation based on when it reached max views)
+      let lockedAt = null;
+      if (device.isLocked || device.viewCount >= device.maxViews) {
+        // If device is locked, use the updatedAt timestamp as lock time
+        lockedAt = device.updatedAt;
+
+        // If we have view history, try to find when it reached max views
+        if (history.length > 0 && device.viewCount >= device.maxViews) {
+          // Find the view that would have caused the lock (the nth view where n = maxViews)
+          const lockingViewIndex = device.maxViews - 1;
+          if (history.length > lockingViewIndex) {
+            // Views are ordered DESC, so we need to reverse to find the locking view
+            const reversedHistory = [...history].reverse();
+            if (reversedHistory[lockingViewIndex]) {
+              lockedAt = reversedHistory[lockingViewIndex].viewedAt;
+            }
+          }
+        }
+      }
+
       device.dataValues.viewHistory = history;
       device.dataValues.studentIds = studentIds;
       device.dataValues.totalStudentsViewed = studentIds.length;
+      device.dataValues.lockedAt = lockedAt;
     }
 
     const totalPages = Math.ceil(count / limit);
@@ -745,6 +771,69 @@ const deleteDevice = async (req, res) => {
   }
 };
 
+// Update max views for all devices
+const updateAllMaxViews = async (req, res) => {
+  try {
+    const { maxViews } = req.body;
+
+    // Validate input
+    if (!maxViews || maxViews < 1 || maxViews > 50) {
+      return res.status(400).json({
+        success: false,
+        message: "Max views must be between 1 and 50",
+      });
+    }
+
+    const { DeviceView } = require("../models");
+
+    console.log(`📊 Updating max views to ${maxViews} for all devices...`);
+
+    // Get current count of devices before update
+    const totalDevices = await DeviceView.count();
+    console.log(`📱 Found ${totalDevices} devices to update`);
+
+    // Update all devices
+    const [updatedCount] = await DeviceView.update(
+      { maxViews: parseInt(maxViews) },
+      { where: {} }, // Update all devices
+    );
+
+    console.log(`✅ Successfully updated ${updatedCount} devices`);
+
+    // Verify the update by checking a few devices
+    const sampleDevices = await DeviceView.findAll({
+      attributes: ["deviceId", "maxViews"],
+      limit: 3,
+      order: [["updatedAt", "DESC"]],
+    });
+
+    console.log(
+      `🔍 Sample updated devices:`,
+      sampleDevices.map((d) => ({
+        deviceId: d.deviceId.substring(0, 20) + "...",
+        maxViews: d.maxViews,
+      })),
+    );
+
+    res.json({
+      success: true,
+      message: `Successfully updated max views to ${maxViews} for ${updatedCount} device(s)`,
+      data: {
+        newMaxViews: parseInt(maxViews),
+        devicesUpdated: updatedCount,
+        totalDevices: totalDevices,
+      },
+    });
+  } catch (error) {
+    console.error("💥 Update all max views error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update max views for all devices",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
+  }
+};
+
 module.exports = {
   getAllStudents,
   getStudentDetails,
@@ -759,4 +848,5 @@ module.exports = {
   unlockDevice,
   unlockAllDevices,
   deleteDevice,
+  updateAllMaxViews,
 };

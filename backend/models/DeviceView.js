@@ -84,8 +84,27 @@ DeviceView.prototype.incrementView = async function () {
   return this.viewCount;
 };
 
+// Static method to get current default max views (from most recent device or fallback to 6)
+DeviceView.getDefaultMaxViews = async function () {
+  try {
+    // Get the most recently updated device to use its maxViews as the current default
+    const recentDevice = await this.findOne({
+      order: [["updatedAt", "DESC"]],
+      attributes: ["maxViews"],
+    });
+
+    return recentDevice ? recentDevice.maxViews : 6; // Fallback to 6 if no devices exist
+  } catch (error) {
+    console.error("Error getting default max views:", error);
+    return 6; // Fallback to 6 on error
+  }
+};
+
 // Static method to get or create device record
 DeviceView.getOrCreate = async function (deviceId, ipAddress, userAgent) {
+  // Get current default max views
+  const defaultMaxViews = await this.getDefaultMaxViews();
+
   const [device, created] = await this.findOrCreate({
     where: { deviceId },
     defaults: {
@@ -93,7 +112,7 @@ DeviceView.getOrCreate = async function (deviceId, ipAddress, userAgent) {
       ipAddress,
       userAgent,
       viewCount: 0,
-      maxViews: 6,
+      maxViews: defaultMaxViews,
       isLocked: false,
     },
   });

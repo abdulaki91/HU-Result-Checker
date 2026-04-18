@@ -157,6 +157,9 @@ export const adminAPI = {
 
   deleteDevice: (deviceId) =>
     api.delete(`/admin/devices/${encodeURIComponent(deviceId)}`),
+
+  updateAllMaxViews: (maxViews) =>
+    api.put("/admin/devices/max-views", { maxViews }),
 };
 
 // Column Settings API (Protected)

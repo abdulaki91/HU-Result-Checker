@@ -15,8 +15,8 @@ process.env.JWT_EXPIRES_IN = "7d";
 process.env.CLIENT_URL = "https://cs-checkresult.com.abdulaki.com";
 process.env.MAX_FILE_SIZE = "10485760";
 process.env.UPLOAD_PATH = "./uploads";
-process.env.RATE_LIMIT_WINDOW_MS = "900000";
-process.env.RATE_LIMIT_MAX_REQUESTS = "100";
+process.env.RATE_LIMIT_WINDOW_MS = "900000"; // 15 minutes
+process.env.RATE_LIMIT_MAX_REQUESTS = "2000"; // Increased from 100 to 2000
 process.env.LOG_LEVEL = "info";
 
 console.log("🚀 Starting server with environment variables (no .env file)");

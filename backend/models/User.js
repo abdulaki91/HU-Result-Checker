@@ -102,11 +102,11 @@ User.prototype.comparePassword = async function (candidatePassword) {
       );
       this.loginAttempts += 1;
 
-      // Lock account after 5 failed attempts for 30 minutes
-      if (this.loginAttempts >= 5) {
+      // Lock account after 10 failed attempts for 30 minutes (increased from 5)
+      if (this.loginAttempts >= 10) {
         this.lockUntil = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
         console.log(
-          `Account locked for user: ${this.username} after 5 failed attempts`,
+          `Account locked for user: ${this.username} after 10 failed attempts`,
         );
       }
 

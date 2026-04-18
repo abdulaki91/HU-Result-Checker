@@ -23,6 +23,8 @@ import LoadingSpinner from "../../components/common/LoadingSpinner";
 import toast from "react-hot-toast";
 
 const DeviceManagementPage = () => {
+  console.log("🔧 DeviceManagementPage component loaded");
+
   const [devices, setDevices] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showAll, setShowAll] = useState(false);
@@ -34,6 +36,9 @@ const DeviceManagementPage = () => {
   const [selectedDevice, setSelectedDevice] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showUnlockAllModal, setShowUnlockAllModal] = useState(false);
+  const [showMaxViewsModal, setShowMaxViewsModal] = useState(false);
+  const [newMaxViews, setNewMaxViews] = useState(6);
+  const [currentMaxViews, setCurrentMaxViews] = useState(6);
   const [searchInfo, setSearchInfo] = useState(null);
   const [expandedRows, setExpandedRows] = useState(new Set());
 
@@ -78,6 +83,13 @@ const DeviceManagementPage = () => {
       setTotalPages(response.data.pagination.totalPages);
       setTotalItems(response.data.pagination.totalItems);
       setSearchInfo(response.data.searchInfo || null);
+
+      // Update current max views from the first device (they should all be the same)
+      if (response.data.data.length > 0) {
+        const firstDevice = response.data.data[0];
+        setCurrentMaxViews(firstDevice.maxViews);
+        setNewMaxViews(firstDevice.maxViews); // Set modal input to current value
+      }
     } catch (error) {
       const errorMessage = handleApiError(error);
       console.error("❌ Error loading devices:", error);
@@ -107,6 +119,34 @@ const DeviceManagementPage = () => {
     } catch (error) {
       const errorMessage = handleApiError(error);
       toast.error(errorMessage);
+    }
+  };
+
+  const handleUpdateMaxViews = async () => {
+    try {
+      // Validate input
+      if (newMaxViews < 1 || newMaxViews > 50) {
+        toast.error("Max views must be between 1 and 50");
+        return;
+      }
+
+      console.log(`🔄 Updating max views to ${newMaxViews} for all devices...`);
+
+      const response = await adminAPI.updateAllMaxViews(newMaxViews);
+
+      console.log("✅ Max views update response:", response.data);
+
+      toast.success(
+        `${response.data.message}\n` +
+          `Updated ${response.data.data.devicesUpdated} out of ${response.data.data.totalDevices} devices`,
+      );
+
+      setShowMaxViewsModal(false);
+      loadDevices(); // Refresh the device list
+    } catch (error) {
+      console.error("❌ Error updating max views:", error);
+      const errorMessage = handleApiError(error);
+      toast.error(`Failed to update max views: ${errorMessage}`);
     }
   };
 
@@ -154,12 +194,52 @@ const DeviceManagementPage = () => {
 
   const formatDate = (date) => {
     if (!date) return "Never";
-    return new Date(date).toLocaleString();
+    return new Date(date).toLocaleString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
   };
 
   const truncateDeviceId = (deviceId) => {
     if (deviceId.length <= 20) return deviceId;
     return `${deviceId.substring(0, 10)}...${deviceId.substring(deviceId.length - 10)}`;
+  };
+
+  const getBrowserInfo = (userAgent) => {
+    if (!userAgent) return "Unknown Browser";
+
+    // Simple browser detection
+    if (userAgent.includes("Chrome") && !userAgent.includes("Edg"))
+      return "Chrome";
+    if (userAgent.includes("Firefox")) return "Firefox";
+    if (userAgent.includes("Safari") && !userAgent.includes("Chrome"))
+      return "Safari";
+    if (userAgent.includes("Edg")) return "Edge";
+    if (userAgent.includes("Opera")) return "Opera";
+
+    return "Other Browser";
+  };
+
+  const getDeviceType = (userAgent) => {
+    if (!userAgent) return "Unknown Device";
+
+    if (userAgent.includes("Mobile") || userAgent.includes("Android"))
+      return "Mobile";
+    if (userAgent.includes("iPad") || userAgent.includes("Tablet"))
+      return "Tablet";
+    return "Desktop";
+  };
+
+  const isRecentlyLocked = (lockedAt) => {
+    if (!lockedAt) return false;
+    const lockTime = new Date(lockedAt);
+    const now = new Date();
+    const hourAgo = new Date(now.getTime() - 60 * 60 * 1000); // 1 hour ago
+    return lockTime > hourAgo;
   };
 
   const toggleRow = (deviceId) => {
@@ -192,6 +272,11 @@ const DeviceManagementPage = () => {
                 </h1>
                 <p className="text-gray-600 mt-1">
                   Manage device view limits and unlock locked devices
+                </p>
+                <p className="text-sm text-indigo-600 mt-1 font-medium">
+                  📅 Recently locked devices appear first • 🔥 Look for
+                  "Recently Locked" badge • 🎯 Check browser type and last
+                  viewed student ID
                 </p>
               </div>
             </div>
@@ -267,6 +352,23 @@ const DeviceManagementPage = () => {
 
           {/* Actions Bar */}
           <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
+            {/* Debug: Always visible Max Views button */}
+            <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
+              <p className="text-sm text-yellow-800 mb-2">
+                🔧 Debug: Max Views Control
+              </p>
+              <button
+                onClick={() => {
+                  console.log("Debug Max Views button clicked!");
+                  alert(`Current Max Views: ${currentMaxViews}`);
+                  setShowMaxViewsModal(true);
+                }}
+                className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors"
+              >
+                🔧 Debug: Adjust Max Views ({currentMaxViews})
+              </button>
+            </div>
+
             <div className="flex flex-col gap-4">
               {/* Student ID Search */}
               <div className="flex flex-col md:flex-row gap-4">
@@ -352,6 +454,19 @@ const DeviceManagementPage = () => {
                   Unlock All
                 </button>
 
+                {/* Max Views Button - Enhanced visibility */}
+                <button
+                  onClick={() => {
+                    console.log("Max Views button clicked!");
+                    setShowMaxViewsModal(true);
+                  }}
+                  className="h-12 px-6 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-semibold hover:shadow-lg transition-all flex items-center border-2 border-purple-300"
+                  style={{ minWidth: "140px" }}
+                >
+                  <Eye className="h-5 w-5 mr-2" />
+                  Max Views ({currentMaxViews})
+                </button>
+
                 {/* Refresh Button */}
                 <button
                   onClick={loadDevices}
@@ -413,6 +528,9 @@ const DeviceManagementPage = () => {
                       Last Viewed
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                      Locked At
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
                       IP Address
                     </th>
                     <th className="px-6 py-4 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">
@@ -427,7 +545,11 @@ const DeviceManagementPage = () => {
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: index * 0.05 }}
-                        className="hover:bg-gray-50 transition-colors"
+                        className={`hover:bg-gray-50 transition-colors ${
+                          isRecentlyLocked(device.lockedAt)
+                            ? "bg-red-50 border-l-4 border-red-400"
+                            : ""
+                        }`}
                       >
                         <td className="px-6 py-4">
                           <div className="flex items-center">
@@ -446,24 +568,49 @@ const DeviceManagementPage = () => {
                               <p className="text-sm font-mono font-medium text-gray-900">
                                 {truncateDeviceId(device.deviceId)}
                               </p>
-                              <p className="text-xs text-gray-500 mt-1">
-                                Created: {formatDate(device.createdAt)}
-                              </p>
+                              <div className="flex items-center gap-2 mt-1">
+                                <p className="text-xs text-gray-500">
+                                  Created: {formatDate(device.createdAt)}
+                                </p>
+                                <span className="text-xs text-gray-400">•</span>
+                                <p className="text-xs text-indigo-600 font-medium">
+                                  {getBrowserInfo(device.userAgent)} on{" "}
+                                  {getDeviceType(device.userAgent)}
+                                </p>
+                                {device.studentIds &&
+                                  device.studentIds.length > 0 && (
+                                    <>
+                                      <span className="text-xs text-gray-400">
+                                        •
+                                      </span>
+                                      <p className="text-xs text-purple-600 font-medium">
+                                        Last viewed: {device.studentIds[0]}
+                                      </p>
+                                    </>
+                                  )}
+                              </div>
                             </div>
                           </div>
                         </td>
                         <td className="px-6 py-4">
-                          <span
-                            className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(device)}`}
-                          >
-                            {getStatusIcon(device)}
-                            <span className="ml-2">
-                              {device.isLocked ||
-                              device.viewCount >= device.maxViews
-                                ? "Locked"
-                                : "Active"}
+                          <div className="flex items-center justify-between">
+                            <span
+                              className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(device)}`}
+                            >
+                              {getStatusIcon(device)}
+                              <span className="ml-2">
+                                {device.isLocked ||
+                                device.viewCount >= device.maxViews
+                                  ? "Locked"
+                                  : "Active"}
+                              </span>
                             </span>
-                          </span>
+                            {isRecentlyLocked(device.lockedAt) && (
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700 ml-2">
+                                🔥 Recently Locked
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center">
@@ -522,6 +669,18 @@ const DeviceManagementPage = () => {
                           </div>
                         </td>
                         <td className="px-6 py-4">
+                          {device.lockedAt ? (
+                            <div className="flex items-center text-sm text-red-600">
+                              <Lock className="h-4 w-4 mr-2" />
+                              {formatDate(device.lockedAt)}
+                            </div>
+                          ) : (
+                            <span className="text-sm text-gray-400 italic">
+                              Not locked
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4">
                           <span className="text-sm font-mono text-gray-900">
                             {device.ipAddress || "N/A"}
                           </span>
@@ -563,7 +722,7 @@ const DeviceManagementPage = () => {
                             exit={{ opacity: 0, height: 0 }}
                             className="bg-gradient-to-r from-indigo-50 to-purple-50"
                           >
-                            <td colSpan="7" className="px-6 py-4">
+                            <td colSpan="8" className="px-6 py-4">
                               <div className="flex items-start space-x-2 mb-3">
                                 <History className="h-5 w-5 text-indigo-600 mt-0.5" />
                                 <h4 className="text-sm font-bold text-gray-900">
@@ -742,6 +901,76 @@ const DeviceManagementPage = () => {
                     className="flex-1 px-6 py-3 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 text-white font-semibold hover:shadow-lg transition-all"
                   >
                     Unlock All
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Max Views Adjustment Modal */}
+        <AnimatePresence>
+          {showMaxViewsModal && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+              onClick={() => setShowMaxViewsModal(false)}
+            >
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                onClick={(e) => e.stopPropagation()}
+                className="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl"
+              >
+                <div className="flex items-center justify-center w-16 h-16 bg-purple-100 rounded-full mx-auto mb-4">
+                  <Eye className="h-8 w-8 text-purple-600" />
+                </div>
+                <h3 className="text-2xl font-bold text-gray-900 text-center mb-2">
+                  Adjust Max Views
+                </h3>
+                <p className="text-gray-600 text-center mb-6">
+                  Set the maximum number of views allowed for all devices. This
+                  will apply to all existing and new devices.
+                  <br />
+                  <span className="text-sm text-indigo-600 font-medium">
+                    Current setting: {currentMaxViews} views per device
+                  </span>
+                </p>
+
+                <div className="mb-6">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Maximum Views per Device
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="50"
+                    value={newMaxViews}
+                    onChange={(e) =>
+                      setNewMaxViews(parseInt(e.target.value) || 1)
+                    }
+                    className="w-full h-12 px-4 rounded-xl border-2 border-purple-200 focus:border-purple-500 focus:outline-none transition-colors text-center text-lg font-semibold"
+                  />
+                  <p className="mt-2 text-xs text-gray-500 text-center">
+                    Range: 1-50 views per device
+                  </p>
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setShowMaxViewsModal(false)}
+                    className="flex-1 px-6 py-3 rounded-xl bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleUpdateMaxViews}
+                    className="flex-1 px-6 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-semibold hover:shadow-lg transition-all"
+                  >
+                    Update All
                   </button>
                 </div>
               </motion.div>
