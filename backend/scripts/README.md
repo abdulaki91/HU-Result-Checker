@@ -41,6 +41,24 @@ This directory contains scripts for managing the database.
 - Testing with a clean database
 - **NEVER use in production with real data**
 
+### 3. `updateGradeSystem.js` - Grade System Migration
+
+**Command**: `node scripts/updateGradeSystem.js`
+
+**What it does**:
+
+- 🔄 Updates the system to use uploaded grades instead of calculated grades
+- ✅ Converts null grades to "N/A"
+- 🧮 Recalculates GPAs based on uploaded grades only
+- 🔧 Updates database schema to support "N/A" grades
+- ✅ **PRESERVES all existing student and course data**
+
+**Use when**:
+
+- Migrating from calculated grades to uploaded grades system
+- After updating the codebase to remove grade calculation logic
+- One-time migration script (run once after system update)
+
 ## Login Credentials
 
 After running either script, you can login with:
@@ -50,6 +68,15 @@ After running either script, you can login with:
 - **Email**: `abdulakimustefa@gmail.com`
 
 ## Important Notes
+
+### Grade System Changes
+
+The system has been updated to require grades to be uploaded in Excel files rather than calculated from individual marks:
+
+- **Individual marks** (quiz, midterm, assignment, project, final) are now stored for reference only
+- **Grades** must be provided in the Excel upload with a "Grade" column
+- **GPA calculation** now uses only the uploaded grades
+- **Assessment configurations** are maintained for historical reference
 
 ### Why Students Were Being Deleted
 
@@ -67,6 +94,7 @@ Previously, the `seedData.js` script was using `syncDatabase(true)` with `force:
 2. **For production**: Never run reset script, only use seed script
 3. **For testing**: Use reset script to get a clean state
 4. **After code updates**: Run seed script to apply schema changes safely
+5. **After grade system update**: Run `updateGradeSystem.js` once to migrate data
 
 ## Troubleshooting
 
@@ -80,3 +108,9 @@ Previously, the `seedData.js` script was using `syncDatabase(true)` with `force:
 
 1. Run `npm run seed` to update schema without losing data
 2. If that fails, you may need to run `npm run db:reset` (will lose all data)
+
+### After removing grade calculation logic:
+
+1. Run `node scripts/updateGradeSystem.js` to migrate existing data
+2. Ensure Excel uploads include a "Grade" column
+3. Individual marks columns are optional and for reference only

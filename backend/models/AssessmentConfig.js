@@ -3,8 +3,9 @@ const { sequelize } = require("../config/database");
 
 /**
  * AssessmentConfig Model
- * Stores the assessment breakdown/weighting for courses
- * This allows different courses or batches to have different assessment structures
+ * Stores the assessment breakdown/weighting for courses (for reference only)
+ * Grades are now uploaded directly and not calculated from individual marks
+ * This model maintains historical assessment structure information
  * Example: Quiz 10%, Midterm 20%, Assignment 15%, Project 15%, Final 40%
  */
 const AssessmentConfig = sequelize.define(

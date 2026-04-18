@@ -4,7 +4,7 @@ const fs = require("fs");
 
 class ExcelService {
   constructor() {
-    this.requiredColumns = ["fullName", "studentId"]; // Only name and ID are truly required
+    this.requiredColumns = ["fullName", "studentId", "grade"]; // Name, ID, and grade are required
     this.optionalColumns = [
       "department",
       "batch",
@@ -384,8 +384,8 @@ class ExcelService {
 
       console.log(`      📊 Course data: grade="${grade}", total=${total}`);
 
-      // Only create course if we have either grade or total marks
-      if (grade || total > 0) {
+      // Only create course if we have a grade
+      if (grade) {
         // Use sheet name or default as course code
         const courseCode =
           this.getColumnValue(row, columnMapping.courseCode) || "COURSE";
@@ -416,24 +416,24 @@ class ExcelService {
           );
         }
 
-        // Calculate grade if not provided
+        // Grade must be provided in upload - no calculation
         let finalGrade = grade;
-        if (!finalGrade && calculatedTotal > 0) {
-          finalGrade = Student.calculateGrade(calculatedTotal);
-          console.log(
-            `      🎯 Calculated grade: ${finalGrade} (from total: ${calculatedTotal})`,
-          );
+        if (!finalGrade) {
+          console.log(`      ⚠️ No grade provided for course - setting as N/A`);
+          finalGrade = "N/A";
         }
 
         const course = {
           courseCode: courseCode.toString().trim().toUpperCase(),
           courseName: courseName || courseCode,
           creditHours: this.getNumericValue(row, columnMapping.creditHours, 3),
-          grade: finalGrade ? finalGrade.toString().trim().toUpperCase() : "F",
+          grade: finalGrade
+            ? finalGrade.toString().trim().toUpperCase()
+            : "N/A",
           gradePoints: Student.getGradePoints(
-            finalGrade ? finalGrade.toString().trim().toUpperCase() : "F",
+            finalGrade ? finalGrade.toString().trim().toUpperCase() : "N/A",
           ),
-          // Individual marks
+          // Individual marks (for reference only)
           quizMarks: quiz,
           midtermMarks: midterm,
           assignmentMarks: assignment,
@@ -445,13 +445,11 @@ class ExcelService {
         };
 
         console.log(
-          `      ✅ Course created: ${course.courseCode} (${course.grade}, ${course.totalMarks} marks)`,
+          `      ✅ Course created: ${course.courseCode} (${course.grade}, marks for reference only)`,
         );
         courses.push(course);
       } else {
-        console.log(
-          `      ⚠️ No course created - no grade or total marks found`,
-        );
+        console.log(`      ⚠️ No course created - no grade provided`);
       }
     } else {
       console.log(`      🔄 Processing multi-course format...`);

@@ -158,26 +158,6 @@ const CheckResultPage = () => {
     return numMark % 1 === 0 ? numMark.toString() : numMark.toString();
   };
 
-  // Calculate grade from total marks using the standard grading scale
-  const calculateGrade = (totalMarks) => {
-    if (totalMarks === undefined || totalMarks === null) return "F";
-    const numMarks = parseFloat(totalMarks);
-    if (isNaN(numMarks)) return "F";
-
-    if (numMarks >= 90) return "A+";
-    if (numMarks >= 85) return "A";
-    if (numMarks >= 80) return "A-";
-    if (numMarks >= 75) return "B+";
-    if (numMarks >= 70) return "B";
-    if (numMarks >= 65) return "B-";
-    if (numMarks >= 60) return "C+";
-    if (numMarks >= 50) return "C";
-    if (numMarks >= 45) return "C-";
-    if (numMarks >= 40) return "D";
-    if (numMarks >= 30) return "Fx";
-    return "F";
-  };
-
   // Helper function to check if a column should be visible
   const isColumnVisible = (columnKey) => {
     console.log(`🔍 Checking visibility for ${columnKey}:`, {
@@ -272,6 +252,7 @@ const CheckResultPage = () => {
       D: "text-orange-600 bg-orange-50",
       Fx: "text-red-500 bg-red-50",
       F: "text-red-600 bg-red-50",
+      "N/A": "text-gray-500 bg-gray-100",
     };
     return gradeColors[grade] || "text-gray-600 bg-gray-50";
   };
@@ -855,10 +836,8 @@ const CheckResultPage = () => {
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-100">
                         {student.courses.map((course, index) => {
-                          // Calculate grade from total marks on the frontend
-                          const calculatedGrade = calculateGrade(
-                            course.marks?.total,
-                          );
+                          // Use the uploaded grade directly
+                          const displayGrade = course.grade || "N/A";
 
                           return (
                             <motion.tr
@@ -914,9 +893,9 @@ const CheckResultPage = () => {
                               {isCourseColumnVisible("grade") && (
                                 <td className="px-6 py-4 whitespace-nowrap">
                                   <span
-                                    className={`inline-flex px-3 py-1.5 text-sm font-bold rounded-xl shadow-sm ${getGradeColor(calculatedGrade)}`}
+                                    className={`inline-flex px-3 py-1.5 text-sm font-bold rounded-xl shadow-sm ${getGradeColor(displayGrade)}`}
                                   >
-                                    {calculatedGrade}
+                                    {displayGrade}
                                   </span>
                                 </td>
                               )}

@@ -235,8 +235,10 @@ const Course = sequelize.define(
         "F",
         "I",
         "W",
+        "N/A",
       ),
       allowNull: false,
+      comment: "Grade must be uploaded - no automatic calculation",
     },
     gradePoints: {
       type: DataTypes.DECIMAL(3, 2),
@@ -246,36 +248,42 @@ const Course = sequelize.define(
         max: 4,
       },
     },
-    // Marks breakdown
+    // Marks breakdown (for reference only - grades are uploaded)
     quizMarks: {
       type: DataTypes.DECIMAL(5, 2),
       defaultValue: 0,
       validate: { min: 0, max: 100 },
+      comment: "Individual assessment marks for reference only",
     },
     midtermMarks: {
       type: DataTypes.DECIMAL(5, 2),
       defaultValue: 0,
       validate: { min: 0, max: 100 },
+      comment: "Individual assessment marks for reference only",
     },
     assignmentMarks: {
       type: DataTypes.DECIMAL(5, 2),
       defaultValue: 0,
       validate: { min: 0, max: 100 },
+      comment: "Individual assessment marks for reference only",
     },
     projectMarks: {
       type: DataTypes.DECIMAL(5, 2),
       defaultValue: 0,
       validate: { min: 0, max: 100 },
+      comment: "Individual assessment marks for reference only",
     },
     finalMarks: {
       type: DataTypes.DECIMAL(5, 2),
       defaultValue: 0,
       validate: { min: 0, max: 100 },
+      comment: "Individual assessment marks for reference only",
     },
     totalMarks: {
       type: DataTypes.DECIMAL(5, 2),
       defaultValue: 0,
       validate: { min: 0, max: 100 },
+      comment: "Total marks for reference only - grade is uploaded separately",
     },
     // Assessment configuration used (for reference)
     assessmentConfigId: {
@@ -313,27 +321,12 @@ Student.getGradePoints = function (grade) {
     F: 0.0,
     I: 0.0,
     W: 0.0,
+    "N/A": 0.0, // No grade provided
   };
   return gradeMap[grade] || 0;
 };
 
-// Static method to calculate grade from marks
-Student.calculateGrade = function (totalMarks) {
-  if (totalMarks >= 90) return "A+";
-  if (totalMarks >= 85) return "A";
-  if (totalMarks >= 80) return "A-";
-  if (totalMarks >= 75) return "B+";
-  if (totalMarks >= 70) return "B";
-  if (totalMarks >= 65) return "B-";
-  if (totalMarks >= 60) return "C+";
-  if (totalMarks >= 50) return "C";
-  if (totalMarks >= 45) return "C-";
-  if (totalMarks >= 40) return "D";
-  if (totalMarks >= 30) return "Fx";
-  return "F";
-};
-
-// Instance method to calculate GPA
+// Instance method to calculate GPA from uploaded grades
 Student.prototype.calculateGPA = async function () {
   const courses = await Course.findAll({
     where: { studentId: this.id },
@@ -351,11 +344,14 @@ Student.prototype.calculateGPA = async function () {
   let completedCreditHours = 0;
 
   courses.forEach((course) => {
-    totalGradePoints += course.gradePoints * course.creditHours;
-    totalCreditHours += course.creditHours;
+    // Only use courses that have uploaded grades
+    if (course.grade && course.grade !== "N/A") {
+      totalGradePoints += course.gradePoints * course.creditHours;
+      totalCreditHours += course.creditHours;
 
-    if (!["F", "Fx", "I", "W"].includes(course.grade)) {
-      completedCreditHours += course.creditHours;
+      if (!["F", "Fx", "I", "W"].includes(course.grade)) {
+        completedCreditHours += course.creditHours;
+      }
     }
   });
 
