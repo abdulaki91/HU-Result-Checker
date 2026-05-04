@@ -7,6 +7,7 @@ const {
   validateStudentId,
   checkDeviceStatus,
 } = require("../controllers/studentController");
+const { optionalAuth } = require("../middleware/authMiddleware");
 
 const router = express.Router();
 
@@ -61,9 +62,9 @@ router.get("/search", searchValidation, searchStudents);
 router.get("/validate/:studentId", studentIdValidation, validateStudentId);
 
 // @route   GET /api/students/:studentId
-// @desc    Get student result by ID
-// @access  Public
-router.get("/:studentId", studentIdValidation, getStudentById);
+// @desc    Get student result by ID (with optional auth for admin bypass)
+// @access  Public (admin users bypass device limits)
+router.get("/:studentId", optionalAuth, studentIdValidation, getStudentById);
 
 // @route   GET /api/students/:studentId/pdf
 

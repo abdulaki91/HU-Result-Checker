@@ -15,8 +15,10 @@ import {
 import { studentAPI, handleApiError } from "../services/api";
 import LoadingSpinner from "../components/common/LoadingSpinner";
 import toast from "react-hot-toast";
+import { useAuth } from "../contexts/AuthContext";
 
 const CheckResultPage = () => {
+  const { isAdmin } = useAuth();
   const [studentId, setStudentId] = useState("");
   const [student, setStudent] = useState(null);
   const [columnSettings, setColumnSettings] = useState([]);
@@ -26,14 +28,25 @@ const CheckResultPage = () => {
   const [showLoadingOverlay, setShowLoadingOverlay] = useState(false);
   const [isDeviceLocked, setIsDeviceLocked] = useState(false);
   const [lockData, setLockData] = useState(null);
+  const [currentMaxViews, setCurrentMaxViews] = useState(6); // Default fallback
 
-  // Check if device is locked on component mount
+  // Check if device is locked on component mount (skip for admin)
   useEffect(() => {
+    // Skip device lock check for admin users
+    if (isAdmin()) {
+      setIsDeviceLocked(false);
+      setLockData(null);
+      return;
+    }
+
     const checkDeviceLock = async () => {
       try {
         // Check with backend for current device status
         const response = await studentAPI.checkDeviceStatus();
         const { isLocked, viewCount, maxViews } = response.data;
+
+        // Store the current max views for display
+        setCurrentMaxViews(maxViews || 6);
 
         if (isLocked) {
           // Device is locked on backend
@@ -54,7 +67,6 @@ const CheckResultPage = () => {
           setLockData(null);
         }
       } catch (error) {
-        console.error("Error checking device status:", error);
         // On error, clear localStorage to be safe
         localStorage.removeItem("deviceLocked");
         localStorage.removeItem("deviceLockData");
@@ -64,7 +76,7 @@ const CheckResultPage = () => {
     };
 
     checkDeviceLock();
-  }, []);
+  }, [isAdmin]);
 
   const handleSearch = async (e) => {
     e.preventDefault();
@@ -74,8 +86,8 @@ const CheckResultPage = () => {
       return;
     }
 
-    // Check if device is locked before making request
-    if (isDeviceLocked) {
+    // Skip device lock check for admin users
+    if (!isAdmin() && isDeviceLocked) {
       toast.error("This device is locked. Contact administrator to reset.");
       return;
     }
@@ -95,10 +107,16 @@ const CheckResultPage = () => {
       setStudent(response.data.data);
       setColumnSettings(response.data.columnSettings || []);
       setAssessmentConfig(response.data.assessmentConfig || null);
-      setViewInfo(response.data.viewInfo || null);
 
-      // Check if device got locked after this view
-      if (response.data.viewInfo?.isLocked) {
+      // Only set view info for non-admin users
+      if (!isAdmin()) {
+        setViewInfo(response.data.viewInfo || null);
+      } else {
+        setViewInfo(null); // Clear view info for admin
+      }
+
+      // Check if device got locked after this view (skip for admin)
+      if (!isAdmin() && response.data.viewInfo?.isLocked) {
         setIsDeviceLocked(true);
         const lockInfo = {
           viewCount: response.data.viewInfo.viewCount,
@@ -115,8 +133,12 @@ const CheckResultPage = () => {
     } catch (error) {
       const errorMessage = handleApiError(error);
 
-      // Check if it's a locked result error
-      if (error.response?.status === 403 && error.response?.data?.locked) {
+      // Check if it's a locked result error (skip for admin)
+      if (
+        !isAdmin() &&
+        error.response?.status === 403 &&
+        error.response?.data?.locked
+      ) {
         const lockDataFromServer = error.response.data;
         toast.error(lockDataFromServer.message);
 
@@ -324,9 +346,11 @@ const CheckResultPage = () => {
                   </p>
                   <p className="text-sm text-blue-800 leading-relaxed">
                     This device can view student results up to{" "}
-                    <span className="font-bold">6 times total</span>. After
-                    that, access will be locked for this device. Please save or
-                    print results when viewing.
+                    <span className="font-bold">
+                      {currentMaxViews} times total
+                    </span>
+                    . After that, access will be locked for this device. Please
+                    save or print results when viewing.
                   </p>
                 </div>
               </div>
@@ -369,12 +393,16 @@ const CheckResultPage = () => {
             <div className="sm:pt-7">
               <motion.button
                 type="submit"
-                disabled={isLoading || !studentId.trim() || isDeviceLocked}
+                disabled={
+                  isLoading ||
+                  !studentId.trim() ||
+                  (!isAdmin() && isDeviceLocked)
+                }
                 className="h-14 px-8 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white font-semibold text-base shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 flex items-center justify-center w-full sm:w-auto"
-                whileHover={{ scale: isDeviceLocked ? 1 : 1.02 }}
-                whileTap={{ scale: isDeviceLocked ? 1 : 0.98 }}
+                whileHover={{ scale: !isAdmin() && isDeviceLocked ? 1 : 1.02 }}
+                whileTap={{ scale: !isAdmin() && isDeviceLocked ? 1 : 0.98 }}
               >
-                {isDeviceLocked ? (
+                {!isAdmin() && isDeviceLocked ? (
                   <>
                     <Lock className="h-5 w-5 mr-2" />
                     Device Locked
@@ -405,147 +433,9 @@ const CheckResultPage = () => {
           </form>
         </motion.div>
 
-        {/* View Count Warning */}
-        <AnimatePresence>
-          {viewInfo && !student?.locked && !isDeviceLocked && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.4 }}
-              className={`rounded-2xl p-5 mb-8 shadow-lg border-2 ${
-                viewInfo.remainingViews <= 1
-                  ? "bg-gradient-to-r from-red-50 to-pink-50 border-red-300"
-                  : viewInfo.remainingViews <= 3
-                    ? "bg-gradient-to-r from-orange-50 to-yellow-50 border-orange-300"
-                    : "bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-300"
-              }`}
-            >
-              <div className="flex items-center">
-                <motion.div
-                  className={`p-3 rounded-2xl mr-4 ${
-                    viewInfo.remainingViews <= 1
-                      ? "bg-red-100"
-                      : viewInfo.remainingViews <= 3
-                        ? "bg-orange-100"
-                        : "bg-blue-100"
-                  }`}
-                  animate={{ scale: [1, 1.1, 1] }}
-                  transition={{ duration: 2, repeat: Infinity }}
-                >
-                  <AlertCircle
-                    className={`h-6 w-6 ${
-                      viewInfo.remainingViews <= 1
-                        ? "text-red-600"
-                        : viewInfo.remainingViews <= 3
-                          ? "text-orange-600"
-                          : "text-blue-600"
-                    }`}
-                  />
-                </motion.div>
-                <div className="flex-1">
-                  <p
-                    className={`text-base font-bold mb-1 ${
-                      viewInfo.remainingViews <= 1
-                        ? "text-red-900"
-                        : viewInfo.remainingViews <= 3
-                          ? "text-orange-900"
-                          : "text-blue-900"
-                    }`}
-                  >
-                    Device View Limit: {viewInfo.viewCount}/{viewInfo.maxViews}{" "}
-                    views used
-                  </p>
-                  <p
-                    className={`text-sm ${
-                      viewInfo.remainingViews <= 1
-                        ? "text-red-700"
-                        : viewInfo.remainingViews <= 3
-                          ? "text-orange-700"
-                          : "text-blue-700"
-                    }`}
-                  >
-                    {viewInfo.isLocked
-                      ? viewInfo.message ||
-                        "This device is now locked. Contact admin to reset."
-                      : viewInfo.remainingViews > 0
-                        ? `${viewInfo.remainingViews} view(s) remaining. After ${viewInfo.maxViews} views, this device will be locked.`
-                        : "Maximum views reached. This device is now locked."}
-                  </p>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Locked Result Display */}
-        <AnimatePresence>
-          {(student?.locked || isDeviceLocked) && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ duration: 0.5 }}
-              className="bg-gradient-to-br from-red-50 to-pink-50 rounded-3xl shadow-2xl border-2 border-red-300 p-10 mb-10"
-            >
-              <div className="text-center">
-                <motion.div
-                  className="inline-flex items-center justify-center p-5 bg-red-100 rounded-3xl mb-6"
-                  animate={{ rotate: [0, -10, 10, -10, 0] }}
-                  transition={{ duration: 0.5 }}
-                >
-                  <Lock className="h-12 w-12 text-red-600" />
-                </motion.div>
-                <h2 className="text-3xl font-display font-bold text-red-900 mb-4">
-                  Device Locked
-                </h2>
-                <p className="text-lg text-red-700 mb-6 max-w-md mx-auto">
-                  {student?.lockData?.details ||
-                    lockData?.details ||
-                    "This device has exceeded the maximum number of result views."}
-                </p>
-                <div className="bg-white rounded-2xl p-6 mb-6 border-2 border-red-200 max-w-md mx-auto">
-                  <div className="grid grid-cols-2 gap-6 text-base">
-                    <div>
-                      <span className="font-semibold text-gray-600 block mb-1">
-                        Views Used:
-                      </span>
-                      <span className="text-2xl text-red-600 font-bold">
-                        {student?.lockData?.viewCount ||
-                          lockData?.viewCount ||
-                          0}
-                        /
-                        {student?.lockData?.maxViews || lockData?.maxViews || 6}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="font-semibold text-gray-600 block mb-1">
-                        Status:
-                      </span>
-                      <span className="text-2xl text-red-600 font-bold">
-                        Locked
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <div className="bg-blue-50 border-2 border-blue-200 rounded-2xl p-6 max-w-md mx-auto">
-                  <h3 className="font-bold text-blue-900 mb-3 text-lg">
-                    How to unlock:
-                  </h3>
-                  <p className="text-blue-800 text-sm leading-relaxed">
-                    Contact your system administrator to reset your device view
-                    count. This lock persists even after page refresh for
-                    security.
-                  </p>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
         {/* Results */}
         <AnimatePresence>
-          {student && !student.locked && (
+          {student && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -553,376 +443,517 @@ const CheckResultPage = () => {
               transition={{ duration: 0.5 }}
               className="space-y-8"
             >
-              {/* Student Info Card */}
-              <motion.div
-                className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 p-8"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.1 }}
-              >
-                <div className="flex items-center justify-between mb-8">
-                  <h2 className="text-2xl font-display font-bold text-gray-900 flex items-center">
-                    <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-xl mr-3">
-                      <User className="h-6 w-6 text-white" />
-                    </div>
-                    Student Information
-                  </h2>
-                  {columnSettings.length > 0 && (
-                    <div className="text-xs font-semibold text-gray-500 bg-gray-100 px-4 py-2 rounded-xl">
-                      Showing{" "}
-                      {
-                        columnSettings.filter(
-                          (col) =>
-                            col.isVisible &&
-                            [
-                              "fullName",
-                              "studentId",
-                              "department",
-                              "batch",
-                              "semester",
-                              "academicYear",
-                              "email",
-                              "phone",
-                            ].includes(col.columnKey),
-                        ).length
-                      }{" "}
-                      of{" "}
-                      {
-                        columnSettings.filter((col) =>
-                          [
-                            "fullName",
-                            "studentId",
-                            "department",
-                            "batch",
-                            "semester",
-                            "academicYear",
-                            "email",
-                            "phone",
-                          ].includes(col.columnKey),
-                        ).length
-                      }{" "}
-                      fields
-                    </div>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div className="space-y-5">
-                    {isColumnVisible("fullName") && (
-                      <motion.div
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.2 }}
-                        className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-2xl"
-                      >
-                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1">
-                          {getColumnDisplayName("fullName")}
-                        </label>
-                        <p className="text-xl font-bold text-gray-900">
-                          {student.studentInfo.fullName}
-                        </p>
-                      </motion.div>
-                    )}
-                    {isColumnVisible("studentId") && (
-                      <motion.div
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.25 }}
-                        className="bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-2xl"
-                      >
-                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1">
-                          {getColumnDisplayName("studentId")}
-                        </label>
-                        <p className="text-xl font-bold text-gray-900">
-                          {student.studentInfo.studentId}
-                        </p>
-                      </motion.div>
-                    )}
-                    {isColumnVisible("department") && (
-                      <motion.div
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.3 }}
-                        className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-2xl"
-                      >
-                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1">
-                          {getColumnDisplayName("department")}
-                        </label>
-                        <p className="text-lg font-semibold text-gray-900">
-                          {student.studentInfo.department}
-                        </p>
-                      </motion.div>
-                    )}
-                    {isColumnVisible("email") && student.studentInfo.email && (
-                      <motion.div
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.35 }}
-                        className="bg-gradient-to-r from-orange-50 to-amber-50 p-4 rounded-2xl"
-                      >
-                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1">
-                          {getColumnDisplayName("email")}
-                        </label>
-                        <p className="text-lg font-semibold text-gray-900">
-                          {student.studentInfo.email}
-                        </p>
-                      </motion.div>
-                    )}
-                  </div>
-
-                  <div className="space-y-5">
-                    {isColumnVisible("batch") && (
-                      <motion.div
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.2 }}
-                        className="bg-gradient-to-r from-cyan-50 to-sky-50 p-4 rounded-2xl"
-                      >
-                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1">
-                          {getColumnDisplayName("batch")}
-                        </label>
-                        <p className="text-lg font-semibold text-gray-900">
-                          {student.studentInfo.batch}
-                        </p>
-                      </motion.div>
-                    )}
-                    {isColumnVisible("semester") && (
-                      <motion.div
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.25 }}
-                        className="bg-gradient-to-r from-violet-50 to-purple-50 p-4 rounded-2xl"
-                      >
-                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1">
-                          {getColumnDisplayName("semester")}
-                        </label>
-                        <p className="text-lg font-semibold text-gray-900">
-                          {student.studentInfo.semester}
-                        </p>
-                      </motion.div>
-                    )}
-                    {isColumnVisible("academicYear") && (
-                      <motion.div
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.3 }}
-                        className="bg-gradient-to-r from-rose-50 to-pink-50 p-4 rounded-2xl"
-                      >
-                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1">
-                          {getColumnDisplayName("academicYear")}
-                        </label>
-                        <p className="text-lg font-semibold text-gray-900">
-                          {student.studentInfo.academicYear}
-                        </p>
-                      </motion.div>
-                    )}
-                    {isColumnVisible("phone") && student.studentInfo.phone && (
-                      <motion.div
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.35 }}
-                        className="bg-gradient-to-r from-teal-50 to-cyan-50 p-4 rounded-2xl"
-                      >
-                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1">
-                          {getColumnDisplayName("phone")}
-                        </label>
-                        <p className="text-lg font-semibold text-gray-900">
-                          {student.studentInfo.phone}
-                        </p>
-                      </motion.div>
-                    )}
-                  </div>
-                </div>
-              </motion.div>
-
-              {/* Course Details */}
-              {student.courses && student.courses.length > 0 && (
-                <motion.div
-                  className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 p-8"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: 0.2 }}
-                >
-                  <div className="flex items-center justify-between mb-8">
-                    <h2 className="text-2xl font-display font-bold text-gray-900 flex items-center">
-                      <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl mr-3">
-                        <BookOpen className="h-6 w-6 text-white" />
-                      </div>
-                      Course Details
-                    </h2>
-                    {columnSettings.length > 0 && (
-                      <div className="text-xs font-semibold text-gray-500 bg-gray-100 px-4 py-2 rounded-xl">
-                        Showing{" "}
-                        {
-                          columnSettings.filter(
-                            (col) =>
-                              col.isVisible &&
+              {/* Show student info and courses only if we have actual data (not just locked status) */}
+              {student.studentInfo && (
+                <>
+                  {/* Student Info Card */}
+                  <motion.div
+                    className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 p-8"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, delay: 0.1 }}
+                  >
+                    <div className="flex items-center justify-between mb-8">
+                      <h2 className="text-2xl font-display font-bold text-gray-900 flex items-center">
+                        <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-xl mr-3">
+                          <User className="h-6 w-6 text-white" />
+                        </div>
+                        Student Information
+                      </h2>
+                      {columnSettings.length > 0 && (
+                        <div className="text-xs font-semibold text-gray-500 bg-gray-100 px-4 py-2 rounded-xl">
+                          Showing{" "}
+                          {
+                            columnSettings.filter(
+                              (col) =>
+                                col.isVisible &&
+                                [
+                                  "fullName",
+                                  "studentId",
+                                  "department",
+                                  "batch",
+                                  "semester",
+                                  "academicYear",
+                                  "email",
+                                  "phone",
+                                ].includes(col.columnKey),
+                            ).length
+                          }{" "}
+                          of{" "}
+                          {
+                            columnSettings.filter((col) =>
                               [
-                                "quiz",
-                                "midterm",
-                                "assignment",
-                                "project",
-                                "final",
-                                "total",
-                                "grade",
+                                "fullName",
+                                "studentId",
+                                "department",
+                                "batch",
+                                "semester",
+                                "academicYear",
+                                "email",
+                                "phone",
                               ].includes(col.columnKey),
-                          ).length
-                        }{" "}
-                        of{" "}
-                        {
-                          columnSettings.filter((col) =>
-                            [
-                              "quiz",
-                              "midterm",
-                              "assignment",
-                              "project",
-                              "final",
-                              "total",
-                              "grade",
-                            ].includes(col.columnKey),
-                          ).length
-                        }{" "}
-                        mark columns
-                      </div>
-                    )}
-                  </div>
+                            ).length
+                          }{" "}
+                          fields
+                        </div>
+                      )}
+                    </div>
 
-                  <div className="overflow-x-auto rounded-2xl border-2 border-gray-100">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
-                        <tr>
-                          <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                            Course
-                          </th>
-                          <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                            Credits
-                          </th>
-                          {isCourseColumnVisible("quiz") && (
-                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                              {getColumnDisplayName("quiz")}
-                            </th>
-                          )}
-                          {isCourseColumnVisible("midterm") && (
-                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                              {getColumnDisplayName("midterm")}
-                            </th>
-                          )}
-                          {isCourseColumnVisible("assignment") && (
-                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                              {getColumnDisplayName("assignment")}
-                            </th>
-                          )}
-                          {isCourseColumnVisible("project") && (
-                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                              {getColumnDisplayName("project")}
-                            </th>
-                          )}
-                          {isCourseColumnVisible("final") && (
-                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                              {getColumnDisplayName("final")}
-                            </th>
-                          )}
-                          {isCourseColumnVisible("total") && (
-                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                              {getColumnDisplayName("total")}
-                            </th>
-                          )}
-                          {isCourseColumnVisible("grade") && (
-                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                              {getColumnDisplayName("grade")}
-                            </th>
-                          )}
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-100">
-                        {student.courses.map((course, index) => {
-                          // Use the uploaded grade directly
-                          const displayGrade = course.grade || "N/A";
-
-                          return (
-                            <motion.tr
-                              key={index}
-                              className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-200"
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      <div className="space-y-5">
+                        {isColumnVisible("fullName") && (
+                          <motion.div
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: 0.2 }}
+                            className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-2xl"
+                          >
+                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1">
+                              {getColumnDisplayName("fullName")}
+                            </label>
+                            <p className="text-xl font-bold text-gray-900">
+                              {student.studentInfo.fullName}
+                            </p>
+                          </motion.div>
+                        )}
+                        {isColumnVisible("studentId") && (
+                          <motion.div
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: 0.25 }}
+                            className="bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-2xl"
+                          >
+                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1">
+                              {getColumnDisplayName("studentId")}
+                            </label>
+                            <p className="text-xl font-bold text-gray-900">
+                              {student.studentInfo.studentId}
+                            </p>
+                          </motion.div>
+                        )}
+                        {isColumnVisible("department") && (
+                          <motion.div
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: 0.3 }}
+                            className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-2xl"
+                          >
+                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1">
+                              {getColumnDisplayName("department")}
+                            </label>
+                            <p className="text-lg font-semibold text-gray-900">
+                              {student.studentInfo.department}
+                            </p>
+                          </motion.div>
+                        )}
+                        {isColumnVisible("email") &&
+                          student.studentInfo.email && (
+                            <motion.div
                               initial={{ opacity: 0, x: -20 }}
                               animate={{ opacity: 1, x: 0 }}
-                              transition={{ delay: index * 0.05 }}
+                              transition={{ delay: 0.35 }}
+                              className="bg-gradient-to-r from-orange-50 to-amber-50 p-4 rounded-2xl"
                             >
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <div>
-                                  <div className="text-sm font-bold text-gray-900">
-                                    {course.courseCode}
-                                  </div>
-                                  <div className="text-xs text-gray-600 font-medium">
-                                    {course.courseName}
-                                  </div>
-                                </div>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
-                                {course.creditHours}
-                              </td>
+                              <label className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1">
+                                {getColumnDisplayName("email")}
+                              </label>
+                              <p className="text-lg font-semibold text-gray-900">
+                                {student.studentInfo.email}
+                              </p>
+                            </motion.div>
+                          )}
+                      </div>
+
+                      <div className="space-y-5">
+                        {isColumnVisible("batch") && (
+                          <motion.div
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: 0.2 }}
+                            className="bg-gradient-to-r from-cyan-50 to-sky-50 p-4 rounded-2xl"
+                          >
+                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1">
+                              {getColumnDisplayName("batch")}
+                            </label>
+                            <p className="text-lg font-semibold text-gray-900">
+                              {student.studentInfo.batch}
+                            </p>
+                          </motion.div>
+                        )}
+                        {isColumnVisible("semester") && (
+                          <motion.div
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: 0.25 }}
+                            className="bg-gradient-to-r from-violet-50 to-purple-50 p-4 rounded-2xl"
+                          >
+                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1">
+                              {getColumnDisplayName("semester")}
+                            </label>
+                            <p className="text-lg font-semibold text-gray-900">
+                              {student.studentInfo.semester}
+                            </p>
+                          </motion.div>
+                        )}
+                        {isColumnVisible("academicYear") && (
+                          <motion.div
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: 0.3 }}
+                            className="bg-gradient-to-r from-rose-50 to-pink-50 p-4 rounded-2xl"
+                          >
+                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1">
+                              {getColumnDisplayName("academicYear")}
+                            </label>
+                            <p className="text-lg font-semibold text-gray-900">
+                              {student.studentInfo.academicYear}
+                            </p>
+                          </motion.div>
+                        )}
+                        {isColumnVisible("phone") &&
+                          student.studentInfo.phone && (
+                            <motion.div
+                              initial={{ opacity: 0, x: 20 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: 0.35 }}
+                              className="bg-gradient-to-r from-teal-50 to-cyan-50 p-4 rounded-2xl"
+                            >
+                              <label className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1">
+                                {getColumnDisplayName("phone")}
+                              </label>
+                              <p className="text-lg font-semibold text-gray-900">
+                                {student.studentInfo.phone}
+                              </p>
+                            </motion.div>
+                          )}
+                      </div>
+                    </div>
+                  </motion.div>
+
+                  {/* Course Details */}
+                  {student.courses && student.courses.length > 0 && (
+                    <motion.div
+                      className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 p-8"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.5, delay: 0.2 }}
+                    >
+                      <div className="flex items-center justify-between mb-8">
+                        <h2 className="text-2xl font-display font-bold text-gray-900 flex items-center">
+                          <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl mr-3">
+                            <BookOpen className="h-6 w-6 text-white" />
+                          </div>
+                          Course Details
+                        </h2>
+                        {columnSettings.length > 0 && (
+                          <div className="text-xs font-semibold text-gray-500 bg-gray-100 px-4 py-2 rounded-xl">
+                            Showing{" "}
+                            {
+                              columnSettings.filter(
+                                (col) =>
+                                  col.isVisible &&
+                                  [
+                                    "quiz",
+                                    "midterm",
+                                    "assignment",
+                                    "project",
+                                    "final",
+                                    "total",
+                                    "grade",
+                                  ].includes(col.columnKey),
+                              ).length
+                            }{" "}
+                            of{" "}
+                            {
+                              columnSettings.filter((col) =>
+                                [
+                                  "quiz",
+                                  "midterm",
+                                  "assignment",
+                                  "project",
+                                  "final",
+                                  "total",
+                                  "grade",
+                                ].includes(col.columnKey),
+                              ).length
+                            }{" "}
+                            mark columns
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="overflow-x-auto rounded-2xl border-2 border-gray-100">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
+                            <tr>
+                              <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                                Course
+                              </th>
+                              <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                                Credits
+                              </th>
                               {isCourseColumnVisible("quiz") && (
-                                <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
-                                  {formatMark(course.marks?.quiz)}
-                                </td>
+                                <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                                  {getColumnDisplayName("quiz")}
+                                </th>
                               )}
                               {isCourseColumnVisible("midterm") && (
-                                <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
-                                  {formatMark(course.marks?.midterm)}
-                                </td>
+                                <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                                  {getColumnDisplayName("midterm")}
+                                </th>
                               )}
                               {isCourseColumnVisible("assignment") && (
-                                <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
-                                  {formatMark(course.marks?.assignment)}
-                                </td>
+                                <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                                  {getColumnDisplayName("assignment")}
+                                </th>
                               )}
                               {isCourseColumnVisible("project") && (
-                                <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
-                                  {formatMark(course.marks?.project)}
-                                </td>
+                                <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                                  {getColumnDisplayName("project")}
+                                </th>
                               )}
                               {isCourseColumnVisible("final") && (
-                                <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
-                                  {formatMark(course.marks?.final)}
-                                </td>
+                                <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                                  {getColumnDisplayName("final")}
+                                </th>
                               )}
                               {isCourseColumnVisible("total") && (
-                                <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
-                                  {formatMark(course.marks?.total)}
-                                </td>
+                                <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                                  {getColumnDisplayName("total")}
+                                </th>
                               )}
                               {isCourseColumnVisible("grade") && (
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                  <span
-                                    className={`inline-flex px-3 py-1.5 text-sm font-bold rounded-xl shadow-sm ${getGradeColor(displayGrade)}`}
-                                  >
-                                    {displayGrade}
-                                  </span>
-                                </td>
+                                <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                                  {getColumnDisplayName("grade")}
+                                </th>
                               )}
-                            </motion.tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-100">
+                            {student.courses.map((course, index) => {
+                              // Use the uploaded grade directly
+                              const displayGrade = course.grade || "N/A";
+
+                              return (
+                                <motion.tr
+                                  key={index}
+                                  className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-200"
+                                  initial={{ opacity: 0, x: -20 }}
+                                  animate={{ opacity: 1, x: 0 }}
+                                  transition={{ delay: index * 0.05 }}
+                                >
+                                  <td className="px-6 py-4 whitespace-nowrap">
+                                    <div>
+                                      <div className="text-sm font-bold text-gray-900">
+                                        {course.courseCode}
+                                      </div>
+                                      <div className="text-xs text-gray-600 font-medium">
+                                        {course.courseName}
+                                      </div>
+                                    </div>
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+                                    {course.creditHours}
+                                  </td>
+                                  {isCourseColumnVisible("quiz") && (
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+                                      {formatMark(course.marks?.quiz)}
+                                    </td>
+                                  )}
+                                  {isCourseColumnVisible("midterm") && (
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+                                      {formatMark(course.marks?.midterm)}
+                                    </td>
+                                  )}
+                                  {isCourseColumnVisible("assignment") && (
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+                                      {formatMark(course.marks?.assignment)}
+                                    </td>
+                                  )}
+                                  {isCourseColumnVisible("project") && (
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+                                      {formatMark(course.marks?.project)}
+                                    </td>
+                                  )}
+                                  {isCourseColumnVisible("final") && (
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+                                      {formatMark(course.marks?.final)}
+                                    </td>
+                                  )}
+                                  {isCourseColumnVisible("total") && (
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
+                                      {formatMark(course.marks?.total)}
+                                    </td>
+                                  )}
+                                  {isCourseColumnVisible("grade") && (
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                      <span
+                                        className={`inline-flex px-3 py-1.5 text-sm font-bold rounded-xl shadow-sm ${getGradeColor(displayGrade)}`}
+                                      >
+                                        {displayGrade}
+                                      </span>
+                                    </td>
+                                  )}
+                                </motion.tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {/* Generated Info */}
+                  <motion.div
+                    className="text-center text-sm text-gray-500"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.5 }}
+                  >
+                    <div className="flex items-center justify-center space-x-2 bg-white/50 backdrop-blur-sm rounded-2xl px-6 py-3 inline-flex">
+                      <Calendar className="h-4 w-4" />
+                      <span className="font-medium">
+                        Generated on:{" "}
+                        {new Date(student.generatedAt).toLocaleString()}
+                      </span>
+                    </div>
+                  </motion.div>
+                </>
+              )}
+
+              {/* Locked Result Display - Shown after course details, hidden for admin */}
+              {!isAdmin() && (student?.locked || isDeviceLocked) && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: 0.6 }}
+                  className="bg-gradient-to-br from-red-50 to-pink-50 rounded-xl sm:rounded-2xl shadow-lg border border-red-200 p-4 sm:p-6 mt-8 max-w-sm mx-auto"
+                >
+                  <div className="text-center">
+                    <motion.div
+                      className="inline-flex items-center justify-center p-2 sm:p-3 bg-red-100 rounded-xl mb-3"
+                      animate={{ rotate: [0, -10, 10, -10, 0] }}
+                      transition={{ duration: 0.5 }}
+                    >
+                      <Lock className="h-6 w-6 sm:h-8 sm:w-8 text-red-600" />
+                    </motion.div>
+                    <h2 className="text-lg sm:text-xl font-bold text-red-900 mb-2">
+                      Device Locked
+                    </h2>
+                    <p className="text-xs sm:text-sm text-red-700 mb-3">
+                      {student?.lockData?.details ||
+                        lockData?.details ||
+                        "This device has exceeded the maximum number of result views."}
+                    </p>
+                    <div className="bg-white rounded-lg p-3 sm:p-4 mb-3 border border-red-200">
+                      <div className="flex items-center justify-around text-xs sm:text-sm gap-2">
+                        <div className="text-center">
+                          <span className="font-medium text-gray-600 block mb-1">
+                            Views Used
+                          </span>
+                          <span className="text-base sm:text-lg text-red-600 font-bold">
+                            {student?.lockData?.viewCount ||
+                              lockData?.viewCount ||
+                              0}
+                            /
+                            {student?.lockData?.maxViews ||
+                              lockData?.maxViews ||
+                              currentMaxViews}
+                          </span>
+                        </div>
+                        <div className="h-8 w-px bg-gray-300"></div>
+                        <div className="text-center">
+                          <span className="font-medium text-gray-600 block mb-1">
+                            Status
+                          </span>
+                          <span className="text-base sm:text-lg text-red-600 font-bold">
+                            Locked
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4">
+                      <h3 className="font-semibold text-blue-900 mb-1 text-xs sm:text-sm">
+                        How to unlock:
+                      </h3>
+                      <p className="text-blue-800 text-xs leading-relaxed">
+                        Contact your system administrator to reset your device
+                        view count.
+                      </p>
+                    </div>
                   </div>
                 </motion.div>
               )}
 
-              {/* Generated Info */}
-              <motion.div
-                className="text-center text-sm text-gray-500"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.5 }}
-              >
-                <div className="flex items-center justify-center space-x-2 bg-white/50 backdrop-blur-sm rounded-2xl px-6 py-3 inline-flex">
-                  <Calendar className="h-4 w-4" />
-                  <span className="font-medium">
-                    Generated on:{" "}
-                    {new Date(student.generatedAt).toLocaleString()}
-                  </span>
-                </div>
-              </motion.div>
+              {/* View Count Warning - Shown after results */}
+              {viewInfo && !student?.locked && !isDeviceLocked && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: 0.6 }}
+                  className={`rounded-2xl p-5 mt-8 shadow-lg border-2 ${
+                    viewInfo.remainingViews <= 1
+                      ? "bg-gradient-to-r from-red-50 to-pink-50 border-red-300"
+                      : viewInfo.remainingViews <= 3
+                        ? "bg-gradient-to-r from-orange-50 to-yellow-50 border-orange-300"
+                        : "bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-300"
+                  }`}
+                >
+                  <div className="flex items-center">
+                    <motion.div
+                      className={`p-3 rounded-2xl mr-4 ${
+                        viewInfo.remainingViews <= 1
+                          ? "bg-red-100"
+                          : viewInfo.remainingViews <= 3
+                            ? "bg-orange-100"
+                            : "bg-blue-100"
+                      }`}
+                      animate={{ scale: [1, 1.1, 1] }}
+                      transition={{ duration: 2, repeat: Infinity }}
+                    >
+                      <AlertCircle
+                        className={`h-6 w-6 ${
+                          viewInfo.remainingViews <= 1
+                            ? "text-red-600"
+                            : viewInfo.remainingViews <= 3
+                              ? "text-orange-600"
+                              : "text-blue-600"
+                        }`}
+                      />
+                    </motion.div>
+                    <div className="flex-1">
+                      <p
+                        className={`text-base font-bold mb-1 ${
+                          viewInfo.remainingViews <= 1
+                            ? "text-red-900"
+                            : viewInfo.remainingViews <= 3
+                              ? "text-orange-900"
+                              : "text-blue-900"
+                        }`}
+                      >
+                        Device View Limit: {viewInfo.viewCount}/
+                        {viewInfo.maxViews} views used
+                      </p>
+                      <p
+                        className={`text-sm ${
+                          viewInfo.remainingViews <= 1
+                            ? "text-red-700"
+                            : viewInfo.remainingViews <= 3
+                              ? "text-orange-700"
+                              : "text-blue-700"
+                        }`}
+                      >
+                        {viewInfo.isLocked
+                          ? viewInfo.message ||
+                            "This device is now locked. Contact admin to reset."
+                          : viewInfo.remainingViews > 0
+                            ? `${viewInfo.remainingViews} view(s) remaining. After ${viewInfo.maxViews} views, this device will be locked.`
+                            : "Maximum views reached. This device is now locked."}
+                      </p>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
             </motion.div>
           )}
         </AnimatePresence>

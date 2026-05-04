@@ -53,6 +53,37 @@ const authenticateToken = async (req, res, next) => {
   }
 };
 
+// Optional authentication - doesn't fail if no token, just sets req.user if valid
+const optionalAuth = async (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const token = authHeader && authHeader.split(" ")[1]; // Bearer TOKEN
+
+    if (!token) {
+      // No token provided, continue without authentication
+      req.user = null;
+      return next();
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const user = await User.findByPk(decoded.id, {
+      attributes: { exclude: ["password"] },
+    });
+
+    if (user && user.isActive) {
+      req.user = user;
+    } else {
+      req.user = null;
+    }
+
+    next();
+  } catch (error) {
+    // If token is invalid, just continue without authentication
+    req.user = null;
+    next();
+  }
+};
+
 // Check if user has required role
 const requireRole = (roles) => {
   return (req, res, next) => {
@@ -92,6 +123,7 @@ const generateToken = (user) => {
 
 module.exports = {
   authenticateToken,
+  optionalAuth,
   requireRole,
   generateToken,
 };

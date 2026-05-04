@@ -197,42 +197,6 @@ const AdminLoginPage = () => {
             </form>
           </div>
         </motion.div>
-
-        {/* Demo Credentials */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.4 }}
-          className="bg-blue-50 border border-blue-200 rounded-lg p-4"
-        >
-          <h3 className="text-sm font-medium text-blue-900 mb-2">
-            Demo Credentials
-          </h3>
-          <div className="text-sm text-blue-700 space-y-1">
-            <p>
-              <strong>Username:</strong> admin
-            </p>
-            <p>
-              <strong>Password:</strong> admin123
-            </p>
-          </div>
-          <p className="text-xs text-blue-600 mt-2">
-            Use these credentials to explore the admin dashboard
-          </p>
-        </motion.div>
-
-        {/* Footer */}
-        <div className="text-center text-sm text-gray-500">
-          <p>
-            Need help? Contact{" "}
-            <a
-              href="mailto:support@studentresults.edu"
-              className="text-primary-600 hover:text-primary-700"
-            >
-              support@studentresults.edu
-            </a>
-          </p>
-        </div>
       </div>
     </div>
   );

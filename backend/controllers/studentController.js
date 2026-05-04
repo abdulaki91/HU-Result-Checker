@@ -101,28 +101,38 @@ const getStudentById = async (req, res) => {
       });
     }
 
-    if (!deviceId) {
-      return res.status(400).json({
-        success: false,
-        message: "Device identification required",
-      });
-    }
+    // Check if user is authenticated as admin (optional authentication)
+    const isAdmin = req.user && req.user.role === "admin";
 
-    // Check device view limit
-    const { DeviceView } = require("../models");
-    const device = await DeviceView.getOrCreate(deviceId, ipAddress, userAgent);
+    // Skip device limit checks for admin users
+    if (!isAdmin) {
+      if (!deviceId) {
+        return res.status(400).json({
+          success: false,
+          message: "Device identification required",
+        });
+      }
 
-    // Check if device is locked BEFORE any operations
-    if (device.isDeviceLocked()) {
-      return res.status(403).json({
-        success: false,
-        message: "View limit exceeded for this device",
-        locked: true,
-        viewCount: device.viewCount,
-        maxViews: device.maxViews,
-        remainingViews: 0,
-        details: `This device has exceeded the maximum number of result views (${device.maxViews}). Contact your administrator to reset the view count.`,
-      });
+      // Check device view limit
+      const { DeviceView } = require("../models");
+      const device = await DeviceView.getOrCreate(
+        deviceId,
+        ipAddress,
+        userAgent,
+      );
+
+      // Check if device is locked BEFORE any operations
+      if (device.isDeviceLocked()) {
+        return res.status(403).json({
+          success: false,
+          message: "View limit exceeded for this device",
+          locked: true,
+          viewCount: device.viewCount,
+          maxViews: device.maxViews,
+          remainingViews: 0,
+          details: `This device has exceeded the maximum number of result views (${device.maxViews}). Contact your administrator to reset the view count.`,
+        });
+      }
     }
 
     let student;
@@ -246,16 +256,32 @@ const getStudentById = async (req, res) => {
       });
     }
 
-    // Increment device view count (not per-student)
-    const newViewCount = await device.incrementView();
+    // Increment device view count and log view (skip for admin users)
+    let viewInfo = null;
+    if (!isAdmin) {
+      const { DeviceView } = require("../models");
+      const device = await DeviceView.findOne({ where: { deviceId } });
 
-    // Log this view in history
-    const { DeviceViewHistory } = require("../models");
-    await DeviceViewHistory.logView(deviceId, student.studentId, ipAddress);
+      const newViewCount = await device.incrementView();
 
-    // Double-check if device got locked after increment
-    const remainingViews = Math.max(0, device.maxViews - newViewCount);
-    const isNowLocked = device.isDeviceLocked();
+      // Log this view in history
+      const { DeviceViewHistory } = require("../models");
+      await DeviceViewHistory.logView(deviceId, student.studentId, ipAddress);
+
+      // Double-check if device got locked after increment
+      const remainingViews = Math.max(0, device.maxViews - newViewCount);
+      const isNowLocked = device.isDeviceLocked();
+
+      viewInfo = {
+        viewCount: newViewCount,
+        maxViews: device.maxViews,
+        remainingViews: remainingViews,
+        isLocked: isNowLocked,
+        message: isNowLocked
+          ? `This was your last view. This device is now locked.`
+          : `You have ${remainingViews} view(s) remaining on this device`,
+      };
+    }
 
     const transcript = await student.getTranscript();
 
@@ -316,15 +342,7 @@ const getStudentById = async (req, res) => {
           maxMarks: parseFloat(assessmentConfig.finalMaxMarks),
         },
       },
-      viewInfo: {
-        viewCount: newViewCount,
-        maxViews: device.maxViews,
-        remainingViews: remainingViews,
-        isLocked: isNowLocked,
-        message: isNowLocked
-          ? `This was your last view. This device is now locked.`
-          : `You have ${remainingViews} view(s) remaining on this device`,
-      },
+      viewInfo: viewInfo, // null for admin, populated for regular users
     });
   } catch (error) {
     console.error("Get student error:", error);

@@ -3,7 +3,6 @@ const cors = require("cors");
 const helmet = require("helmet");
 const morgan = require("morgan");
 const compression = require("compression");
-const rateLimit = require("express-rate-limit");
 const path = require("path");
 
 // Try to load .env file, but don't fail if it doesn't exist
@@ -66,29 +65,7 @@ app.use(
 );
 app.use(compression());
 
-// Rate limiting - Very high limits for development/admin use
-const limiter = rateLimit({
-  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // Use env var or 15 minutes
-  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 10000, // Use env var or 10000 requests
-  message: {
-    success: false,
-    message: "Too many requests from this IP, please try again later.",
-  },
-});
-
-console.log(
-  `🔒 Rate limiting configured: ${limiter.max} requests per ${limiter.windowMs / 1000 / 60} minutes`,
-);
-console.log(`🔓 Admin routes have NO rate limiting`);
-
-// Apply rate limiting only to specific non-admin routes
-app.use("/api/auth", limiter);
-app.use("/api/students", limiter);
-app.use("/api/results", limiter);
-app.use("/api/column-settings", limiter);
-
-// Admin routes get NO rate limiting at all - they are completely exempt
-console.log(`🔓 Admin routes (/api/admin/*) - NO RATE LIMITING APPLIED`);
+console.log(`🔓 Rate limiting completely disabled for all routes`);
 
 // CORS configuration
 app.use(
