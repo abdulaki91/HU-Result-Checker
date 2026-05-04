@@ -10,6 +10,7 @@ import Footer from "./components/layout/Footer";
 import HomePage from "./pages/HomePage";
 import CheckResultPage from "./pages/CheckResultPage";
 import SearchPage from "./pages/SearchPage";
+import WhoViewedMePage from "./pages/WhoViewedMePage";
 import AdminLoginPage from "./pages/AdminLoginPage";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import StudentsPage from "./pages/admin/StudentsPage";
@@ -47,6 +48,7 @@ function App() {
                 <Route path="/" element={<HomePage />} />
                 <Route path="/check-result" element={<CheckResultPage />} />
                 <Route path="/search" element={<SearchPage />} />
+                <Route path="/who-viewed-me" element={<WhoViewedMePage />} />
                 <Route path="/admin/login" element={<AdminLoginPage />} />
 
                 {/* Protected Admin Routes */}

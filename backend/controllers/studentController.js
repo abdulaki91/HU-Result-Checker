@@ -3,6 +3,7 @@ const { ColumnSetting } = require("../models");
 const ExcelService = require("../services/ExcelService");
 const { validationResult } = require("express-validator");
 const { Op } = require("sequelize");
+const getClientIp = require("../utils/getClientIp");
 
 // Helper function to get all column settings for student data
 const getVisibleColumns = async () => {
@@ -91,7 +92,7 @@ const getStudentById = async (req, res) => {
   try {
     const { studentId } = req.params;
     const deviceId = req.headers["x-device-id"]; // Device ID from frontend
-    const ipAddress = req.ip || req.connection.remoteAddress;
+    const ipAddress = getClientIp(req);
     const userAgent = req.headers["user-agent"];
 
     if (!studentId) {
@@ -265,8 +266,14 @@ const getStudentById = async (req, res) => {
       const newViewCount = await device.incrementView();
 
       // Log this view in history
+      // Note: We log the searched student ID as the viewer since that's who is searching
       const { DeviceViewHistory } = require("../models");
-      await DeviceViewHistory.logView(deviceId, student.studentId, ipAddress);
+      await DeviceViewHistory.logView(
+        deviceId,
+        student.studentId,
+        ipAddress,
+        searchId,
+      );
 
       // Double-check if device got locked after increment
       const remainingViews = Math.max(0, device.maxViews - newViewCount);
@@ -552,7 +559,7 @@ const validateStudentId = async (req, res) => {
 const checkDeviceStatus = async (req, res) => {
   try {
     const deviceId = req.headers["x-device-id"];
-    const ipAddress = req.ip || req.connection.remoteAddress;
+    const ipAddress = getClientIp(req);
 
     if (!deviceId) {
       return res.status(400).json({
@@ -603,10 +610,172 @@ const checkDeviceStatus = async (req, res) => {
   }
 };
 
+// Get view attempts for a student (public endpoint)
+const getViewAttempts = async (req, res) => {
+  try {
+    const { studentId } = req.params;
+
+    if (!studentId || studentId.trim().length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Student ID is required",
+      });
+    }
+
+    const searchId = studentId.trim();
+
+    // First verify the student exists
+    const student = await Student.findOne({
+      where: {
+        [Op.or]: [
+          { studentId: searchId },
+          { studentId: searchId.toUpperCase() },
+          { studentId: { [Op.like]: `%${searchId}%` } },
+        ],
+      },
+      attributes: ["id", "studentId", "fullName", "department", "batch"],
+    });
+
+    if (!student) {
+      return res.status(404).json({
+        success: false,
+        message:
+          "Student not found. Please check your Student ID and try again.",
+      });
+    }
+
+    // Get view history for this student
+    const { DeviceViewHistory } = require("../models");
+    const viewHistory = await DeviceViewHistory.getDevicesByStudent(
+      student.studentId,
+    );
+
+    // Group by device and get unique devices with their view counts and viewer info
+    const deviceMap = new Map();
+
+    viewHistory.forEach((view) => {
+      const deviceId = view.deviceId;
+      if (!deviceMap.has(deviceId)) {
+        deviceMap.set(deviceId, {
+          deviceId: deviceId,
+          viewCount: 0,
+          firstViewedAt: view.viewedAt,
+          lastViewedAt: view.viewedAt,
+          ipAddresses: new Set(),
+          viewerStudentIds: new Set(),
+        });
+      }
+
+      const deviceData = deviceMap.get(deviceId);
+      deviceData.viewCount += 1;
+      deviceData.lastViewedAt = view.viewedAt;
+      if (view.ipAddress) {
+        deviceData.ipAddresses.add(view.ipAddress);
+      }
+      if (view.viewerStudentId) {
+        deviceData.viewerStudentIds.add(view.viewerStudentId);
+      }
+    });
+
+    // Fetch student details for all viewer student IDs
+    const allViewerIds = new Set();
+    deviceMap.forEach((device) => {
+      device.viewerStudentIds.forEach((id) => allViewerIds.add(id));
+    });
+
+    const viewerStudents = await Student.findAll({
+      where: {
+        studentId: Array.from(allViewerIds),
+      },
+      attributes: ["studentId", "fullName", "department"],
+    });
+
+    // Create a map of student ID to student info
+    const viewerInfoMap = new Map();
+    viewerStudents.forEach((s) => {
+      viewerInfoMap.set(s.studentId, {
+        studentId: s.studentId,
+        fullName: s.fullName,
+        department: s.department,
+      });
+    });
+
+    // Convert to array and format
+    const devices = Array.from(deviceMap.values()).map((device) => ({
+      deviceId: device.deviceId.substring(0, 12) + "...", // Truncate for privacy
+      viewCount: device.viewCount,
+      firstViewedAt: device.firstViewedAt,
+      lastViewedAt: device.lastViewedAt,
+      ipAddresses: Array.from(device.ipAddresses),
+      viewers: Array.from(device.viewerStudentIds).map(
+        (id) =>
+          viewerInfoMap.get(id) || {
+            studentId: id,
+            fullName: "Unknown",
+            department: "N/A",
+          },
+      ),
+    }));
+
+    // Sort by most recent view
+    devices.sort((a, b) => new Date(b.lastViewedAt) - new Date(a.lastViewedAt));
+
+    res.json({
+      success: true,
+      data: {
+        student: {
+          studentId: student.studentId,
+          fullName: student.fullName,
+          department: student.department,
+          batch: student.batch,
+        },
+        totalViewAttempts: viewHistory.length,
+        uniqueDevices: devices.length,
+        devices: devices,
+      },
+      message:
+        devices.length > 0
+          ? `Found ${devices.length} device(s) that viewed your results`
+          : "No one has viewed your results yet",
+    });
+  } catch (error) {
+    console.error("Get view attempts error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch view attempts",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
+  }
+};
+
+// Get current default max views (public endpoint)
+const getDefaultMaxViews = async (req, res) => {
+  try {
+    const { DeviceView } = require("../models");
+    const defaultMaxViews = await DeviceView.getDefaultMaxViews();
+
+    res.json({
+      success: true,
+      maxViews: defaultMaxViews,
+      message: `Current default max views is ${defaultMaxViews}`,
+    });
+  } catch (error) {
+    console.error("Get default max views error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch default max views",
+      maxViews: 6, // Fallback
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
+  }
+};
+
 module.exports = {
   getStudentById,
   searchStudents,
   getFilters,
   validateStudentId,
   checkDeviceStatus,
+  getViewAttempts,
+  getDefaultMaxViews,
 };

@@ -6,6 +6,8 @@ const {
   getFilters,
   validateStudentId,
   checkDeviceStatus,
+  getViewAttempts,
+  getDefaultMaxViews,
 } = require("../controllers/studentController");
 const { optionalAuth } = require("../middleware/authMiddleware");
 
@@ -46,6 +48,11 @@ const searchValidation = [
 // @access  Public
 router.get("/filters", getFilters);
 
+// @route   GET /api/students/max-views
+// @desc    Get current default max views
+// @access  Public
+router.get("/max-views", getDefaultMaxViews);
+
 // @route   GET /api/device/status
 // @desc    Check device lock status
 // @access  Public
@@ -55,6 +62,11 @@ router.get("/device/status", checkDeviceStatus);
 // @desc    Search students by name or ID
 // @access  Public
 router.get("/search", searchValidation, searchStudents);
+
+// @route   GET /api/students/view-attempts/:studentId
+// @desc    Get devices that tried to view a student's results
+// @access  Public
+router.get("/view-attempts/:studentId", studentIdValidation, getViewAttempts);
 
 // @route   GET /api/students/validate/:studentId
 // @desc    Validate student ID format and existence

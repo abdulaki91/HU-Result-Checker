@@ -30,6 +30,9 @@ const { authenticateToken } = require("./middleware/authMiddleware");
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Trust proxy - this allows Express to get the real IP from proxy headers
+app.set("trust proxy", true);
+
 // Resolve client origins for CORS
 const getAllowedOrigins = () => {
   const origins = [];

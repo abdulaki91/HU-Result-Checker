@@ -91,6 +91,9 @@ export const studentAPI = {
 
   // Check device lock status
   checkDeviceStatus: () => api.get("/students/device/status"),
+
+  // Get default max views
+  getDefaultMaxViews: () => api.get("/students/max-views"),
 };
 
 // Admin API (Protected)

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { Link } from "react-router-dom";
 import {
   Search,
   User,
@@ -11,6 +12,7 @@ import {
   Lock,
   AlertCircle,
   Sparkles,
+  Eye,
 } from "lucide-react";
 import { studentAPI, handleApiError } from "../services/api";
 import LoadingSpinner from "../components/common/LoadingSpinner";
@@ -28,7 +30,25 @@ const CheckResultPage = () => {
   const [showLoadingOverlay, setShowLoadingOverlay] = useState(false);
   const [isDeviceLocked, setIsDeviceLocked] = useState(false);
   const [lockData, setLockData] = useState(null);
-  const [currentMaxViews, setCurrentMaxViews] = useState(6); // Default fallback
+  const [currentMaxViews, setCurrentMaxViews] = useState(null); // Start with null to indicate loading
+
+  // Fetch default max views on component mount
+  useEffect(() => {
+    const fetchDefaultMaxViews = async () => {
+      try {
+        const response = await studentAPI.getDefaultMaxViews();
+        if (response.data.success) {
+          setCurrentMaxViews(response.data.maxViews);
+        }
+      } catch (error) {
+        console.error("Error fetching default max views:", error);
+        // Fallback to 6 only if fetch fails
+        setCurrentMaxViews(6);
+      }
+    };
+
+    fetchDefaultMaxViews();
+  }, []);
 
   // Check if device is locked on component mount (skip for admin)
   useEffect(() => {
@@ -347,7 +367,8 @@ const CheckResultPage = () => {
                   <p className="text-sm text-blue-800 leading-relaxed">
                     This device can view student results up to{" "}
                     <span className="font-bold">
-                      {currentMaxViews} times total
+                      {currentMaxViews !== null ? currentMaxViews : "..."} times
+                      total
                     </span>
                     . After that, access will be locked for this device. Please
                     save or print results when viewing.
@@ -431,6 +452,28 @@ const CheckResultPage = () => {
               </motion.button>
             </div>
           </form>
+
+          {/* Who Viewed Me Button */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.3 }}
+            className="mt-6 pt-6 border-t border-gray-200"
+          >
+            <Link to="/who-viewed-me">
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="w-full flex items-center justify-center px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold rounded-xl shadow-md hover:shadow-lg transition-all duration-300"
+              >
+                <Eye className="h-5 w-5 mr-2" />
+                Who Tried to View My Results?
+              </motion.button>
+            </Link>
+            <p className="text-xs text-gray-500 text-center mt-2">
+              Check which devices attempted to access your academic information
+            </p>
+          </motion.div>
         </motion.div>
 
         {/* Results */}

@@ -17,7 +17,12 @@ const DeviceViewHistory = sequelize.define(
     studentId: {
       type: DataTypes.STRING(100),
       allowNull: false,
-      comment: "Student ID that was viewed",
+      comment: "Student ID that was viewed (the target)",
+    },
+    viewerStudentId: {
+      type: DataTypes.STRING(100),
+      allowNull: true,
+      comment: "Student ID of the person viewing (the searcher)",
     },
     viewedAt: {
       type: DataTypes.DATE,
@@ -39,6 +44,9 @@ const DeviceViewHistory = sequelize.define(
         fields: ["studentId"],
       },
       {
+        fields: ["viewerStudentId"],
+      },
+      {
         fields: ["deviceId", "studentId"],
       },
     ],
@@ -46,10 +54,16 @@ const DeviceViewHistory = sequelize.define(
 );
 
 // Static method to log a view
-DeviceViewHistory.logView = async function (deviceId, studentId, ipAddress) {
+DeviceViewHistory.logView = async function (
+  deviceId,
+  studentId,
+  ipAddress,
+  viewerStudentId = null,
+) {
   return await this.create({
     deviceId,
     studentId,
+    viewerStudentId,
     ipAddress,
     viewedAt: new Date(),
   });
